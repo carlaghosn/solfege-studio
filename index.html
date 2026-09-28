@@ -145,6 +145,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .stable th{text-align:left;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
 .stable td{padding:7px 8px;border-bottom:1px solid var(--line)}
 .tablewrap{overflow-x:auto}
+body.songOpen header.top p{display:none}
+body.songOpen header.top h1{font-size:26px}
+body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
 </style>
 <style>body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 </head>
@@ -612,6 +615,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 /* ---------- song view ---------- */
 function keyInfo() { const k = tonicFromFifths(S.song.fifths); return k; }
 function openSong(id) {
+  document.body.classList.add('songOpen');
   stopAll();
   S.song = LIB.find(s => s.id === id); if (!S.song) return;
   $('songPick').value = id;
