@@ -83,6 +83,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .pmap{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .pmap button{min-width:34px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:500 11.5px var(--mono);cursor:pointer}
 .pmap button.cur{outline:2px solid var(--ink)}
+.pmap .psec{display:block;width:100%;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 1px}
+.pmap button.spk{font-style:italic;opacity:.7}
+.pmap{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .pmap button.A{background:#d7f2e2;border-color:#8fd3a8;color:#0c5a31}
 .pmap button.B{background:#e6f5d0;border-color:#b5dc86;color:#3b5e12}
 .pmap button.C{background:#fff4d6;border-color:#f0cf73;color:#6b4d00}
@@ -536,7 +539,7 @@ $('songPick').onchange = e => { if (e.target.value) openSong(e.target.value); };
 function unpackSong(r) {
   // compact pack format: notes as [t, d, m, L, a, meas]
   if (!r || !r.parts) return null;
-  return {id:r.id || 'p' + Math.random().toString(36).slice(2), title:r.title, file:'song pack', fifths:r.fifths, minor:!!r.minor, tempo:r.tempo || 90, part:r.part || 0, pack:true, checks:r.checks || null,
+  return {id:r.id || 'p' + Math.random().toString(36).slice(2), title:r.title, file:'song pack', fifths:r.fifths, minor:!!r.minor, tempo:r.tempo || 90, part:r.part || 0, pack:true, checks:r.checks || null, sections:r.sections || null, timeSig:r.timeSig || null,
     parts:r.parts.map(p => ({name:p.name, notes:p.notes.map(n => Array.isArray(n) ? {t:n[0], d:n[1], m:n[2], L:n[3], a:n[4], meas:n[5], ly:''} : n)}))};
 }
 function addSongs(list) {
@@ -605,7 +608,23 @@ function openSong(id) {
   buildPhrases(); buildLibrary(); renderSong();
 }
 function buildPhrases() {
-  const notes = S.song.parts[S.part].notes, ph = []; let cur = [];
+  const notes = S.song.parts[S.part].notes;
+  if (S.song.sections && S.part === (S.song.part || 0)) {
+    // real lines from the song map; a line sung again (repeat, second chorus) is listed once with every section name
+    const seen = {}, ph = [];
+    S.song.sections.forEach(sec => {
+      if (sec.spoken) { ph.push(Object.assign([], {label:sec.name + ' (spoken)', sec:sec.name, spoken:true})); return; }
+      sec.lines.forEach((ln, k) => {
+        const key = ln[0] + '-' + ln[1];
+        if (seen[key]) { if (!seen[key].secs.includes(sec.name)) seen[key].secs.push(sec.name); return; }
+        const arr = notes.slice(ln[0], ln[1] + 1).map((n, j) => Object.assign({i:ln[0] + j}, n));
+        if (!arr.length) return;
+        arr.sec = sec.name; arr.line = k + 1; arr.secs = [sec.name]; seen[key] = arr; ph.push(arr);
+      });
+    });
+    S.phrases = ph.filter(x => !x.spoken || true); S.pi = Math.min(S.pi, S.phrases.length - 1); return;
+  }
+  const ph = []; let cur = [];
   notes.forEach((n, i) => {
     const prev = notes[i - 1];
     const gap = prev ? n.t - (prev.t + prev.d) : 0;
@@ -629,10 +648,18 @@ function renderSong() {
 }
 function renderPhrase() {
   const ph = curPhrase(), k = keyInfo(), tests = DB.tests[S.song.id] || {};
-  $('pLabel').textContent = `Phrase ${S.pi + 1} of ${S.phrases.length}`;
+  const lab = ph.sec ? (ph.spoken ? ph.label : `${ph.secs.join(' / ')} \u00b7 line ${ph.line}`) : `Phrase ${S.pi + 1} of ${S.phrases.length}`;
+  $('pLabel').textContent = lab;
   $('pWhere').textContent = ph.length ? `Bar ${ph[0].meas}${ph[ph.length - 1].meas !== ph[0].meas ? '\u{2013}' + ph[ph.length - 1].meas : ''}` : '';
   $('prevP').disabled = S.pi === 0; $('nextP').disabled = S.pi >= S.phrases.length - 1;
-  $('pmap').innerHTML = S.phrases.map((x, i) => { const g = tests[i]; return `<button class="${i === S.pi ? 'cur ' : ''}${g ? g.grade : ''}" data-i="${i}" title="Phrase ${i + 1}${g ? ': ' + g.score + '/100' : ''}">${i + 1}</button>`; }).join('');
+  let lastSec = null;
+  $('pmap').innerHTML = S.phrases.map((x, i) => {
+    const g = tests[i]; let head = '';
+    if (x.sec && x.sec !== lastSec) { head = `<span class="psec">${esc(x.sec)}</span>`; lastSec = x.sec; }
+    if (x.spoken) return head + `<button class="spk${i === S.pi ? ' cur' : ''}" data-i="${i}" title="Spoken section: no pitches to sing">rap</button>`;
+    return head + `<button class="${i === S.pi ? 'cur ' : ''}${g ? g.grade : ''}" data-i="${i}" title="${x.sec ? esc(x.secs.join(' / ')) + ' line ' + x.line : 'Phrase ' + (i + 1)}${g ? ': ' + g.score + '/100' : ''}">${x.sec ? x.line : i + 1}</button>`;
+  }).join('');
+  if (ph.spoken) { $('sChips').innerHTML = '<p class="note">This section is spoken (rap), so there are no pitches to sing in solf\u00e8ge. Skip ahead to the next section.</p>'; drawRoll($('roll'), [], k, -1); $('sRes').hidden = true; return; }
   const show = $('lyrChk').checked;
   $('sChips').innerHTML = ph.map((n, j) => {
     const syl = sylOf(n, k), prev = ph[j - 1], leap = prev && Math.abs(n.m - prev.m) >= 7;
@@ -818,12 +845,12 @@ function songOpts(mode) { return {mode, bpm:S.song.tempo * S.speed, tr:S.tr, key
       if (g.heard) { const t = (DB.tests[S.song.id] = DB.tests[S.song.id] || {}); if (!t[S.pi] || g.score >= t[S.pi].score) t[S.pi] = {score:g.score, grade:g.grade}; markDay(); saveDB(); renderMapOnly(); buildLibrary(); }
     }
     if (mode !== 'test' && $('loopChk').checked && !S.stopLoop) setTimeout(() => { if (!S.playing) run(curPhrase(), songOpts(mode)); }, 600);
-    if (mode === 'play' && S.chain) { if (S.pi < S.phrases.length - 1) { S.pi++; renderPhrase(); setTimeout(() => run(curPhrase(), songOpts('play')), 300); } else S.chain = false; }
+    if (mode === 'play' && S.chain) { let j = S.pi + 1; while (j < S.phrases.length && S.phrases[j].spoken) j++; if (j < S.phrases.length) { S.pi = j; renderPhrase(); setTimeout(() => run(curPhrase(), songOpts('play')), 300); } else S.chain = false; }
   }}; }
 function renderMapOnly() { const tests = DB.tests[S.song.id] || {}; document.querySelectorAll('#pmap button').forEach(b => { const g = tests[+b.dataset.i]; b.className = (+b.dataset.i === S.pi ? 'cur ' : '') + (g ? g.grade : ''); }); }
-$('playP').onclick = () => { S.chain = false; if (S.playing) return stopAll(); markDay(); run(curPhrase(), songOpts('play')); };
-$('echoP').onclick = () => { S.chain = false; if (S.playing) return stopAll(); markDay(); run(curPhrase(), songOpts('echo')); };
-$('testP').onclick = () => { S.chain = false; if (S.testing && S.playing) return stopAll(); $('sRes').hidden = true; renderPhrase(); run(curPhrase(), songOpts('test')).then(() => { if (S.testing) { $('testP').textContent = '\u{25A0} Stop test'; $('testP').classList.add('on'); } }); };
+$('playP').onclick = () => { if (curPhrase().spoken) return; S.chain = false; if (S.playing) return stopAll(); markDay(); run(curPhrase(), songOpts('play')); };
+$('echoP').onclick = () => { if (curPhrase().spoken) return; S.chain = false; if (S.playing) return stopAll(); markDay(); run(curPhrase(), songOpts('echo')); };
+$('testP').onclick = () => { if (curPhrase().spoken) return; S.chain = false; if (S.testing && S.playing) return stopAll(); $('sRes').hidden = true; renderPhrase(); run(curPhrase(), songOpts('test')).then(() => { if (S.testing) { $('testP').textContent = '\u{25A0} Stop test'; $('testP').classList.add('on'); } }); };
 $('playAll').onclick = () => { if (S.playing) { S.chain = false; return stopAll(); } S.chain = true; markDay(); run(curPhrase(), songOpts('play')); };
 
 /* ---------- sight-singing ---------- */
