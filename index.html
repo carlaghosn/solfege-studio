@@ -145,6 +145,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .stable th{text-align:left;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
 .stable td{padding:7px 8px;border-bottom:1px solid var(--line)}
 .tablewrap{overflow-x:auto}
+.advT{font:800 18px var(--display);margin:14px 0 0}
+.score{background:#fff;border-radius:12px;margin-top:8px;padding:4px 0;overflow-x:auto;min-height:40px}
+.score svg{display:block;max-width:100%}
+.score .vf-cur path,.score .vf-cur ellipse{fill:#0f8a6f!important;stroke:#0f8a6f!important}
+.advDeck{margin-top:10px}
+#adv-gen[aria-pressed="true"],#adv-book[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 body.songOpen header.top p{display:none}
 body.songOpen header.top h1{font-size:26px}
 body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
@@ -167,6 +173,7 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
     <button class="tab" role="tab" id="t-songs" aria-selected="true">My songs</button>
     <button class="tab" role="tab" id="t-sight" aria-selected="false">Sight-singing</button>
     <button class="tab" role="tab" id="t-int" aria-selected="false">Intervals</button>
+    <button class="tab" role="tab" id="t-adv" aria-selected="false">Advanced</button>
     <button class="tab" role="tab" id="t-basics" aria-selected="false">Solf&#xE8;ge basics</button>
     <button class="tab" role="tab" id="t-prog" aria-selected="false">Progress report</button>
   </div>
@@ -228,6 +235,49 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
         <div class="meter"><span class="n" id="mNote">&#x2013;</span><span id="mInfo">Mic turns on for tests. Headphones help.</span></div>
         <details class="allp" id="allP"><summary>All phrases <span class="note">(colors show test grades)</span></summary><div class="pmap" id="pmap" aria-label="All phrases"></div></details>
       </div>
+    </main>
+  </div>
+
+  <!-- ADVANCED -->
+  <div class="grid one" id="advView" hidden>
+    <main class="card">
+      <h2>Advanced solf&#xE8;ge</h2>
+      <p class="hint">Russian-school sight-singing: read real notation in the six major and minor modes, tune your ear to the mode first, then sing the melody. Graded on pitch and rhythm.</p>
+      <div class="row">
+        <button class="btn" id="adv-gen" aria-pressed="true">&#x2728; Melody generator</button>
+        <button class="btn" id="adv-book" aria-pressed="false">&#x1F4D6; Book exercises</button>
+      </div>
+      <div class="row" id="advGenCtl">
+        <label class="ctl" for="advKey">Tonic <select id="advKey"></select></label>
+        <label class="ctl" for="advMode">Mode <select id="advMode"></select></label>
+        <label class="ctl" for="advMeter">Meter <select id="advMeter"><option>2/4</option><option selected>3/4</option><option>4/4</option><option>6/8</option></select></label>
+        <label class="ctl" for="advLvl">Rhythm <select id="advLvl"><option value="1">1 &#xB7; quarters and halves</option><option value="2" selected>2 &#xB7; eighths and dotted</option><option value="3">3 &#xB7; sixteenths</option></select></label>
+        <label class="ctl" for="advLen">Bars <select id="advLen"><option>4</option><option selected>8</option><option>16</option></select></label>
+        <label class="ctl" for="advClef">Clef <select id="advClef"><option value="treble">Treble</option><option value="bass">Bass (sing an octave up)</option></select></label>
+        <label class="ctl" for="advTempo">Tempo <select id="advTempo"><option value="60">60</option><option value="72" selected>72</option><option value="88">88</option><option value="100">100</option></select></label>
+        <button class="go" id="advNew">&#x2728; New melody</button>
+      </div>
+      <div class="row" id="advBookCtl" hidden>
+        <label class="ctl" for="advBookSel">Exercise <select id="advBookSel"></select></label>
+        <p class="note" id="advBookMsg" hidden>The book exercises come with the song pack. Unlock "My songs" with the song password and they appear here.</p>
+      </div>
+      <h3 class="advT" id="advTitle"></h3><p class="note" id="advSub"></p>
+      <div class="score" id="advScore"></div>
+      <div class="deck advDeck">
+        <div class="deckBtns">
+          <button class="go" id="advPrep">&#x1F3B9; Tune the mode</button>
+          <button class="btn" id="advStart">&#x1F514; Starting note</button>
+          <button class="btn" id="advPlay">&#x25B6; Play it</button>
+          <button class="btn" id="advTest">&#x1F3AF; Test me</button>
+          <label class="ctl" for="advSpd">Speed <select id="advSpd"><option value="0.75">75%</option><option value="1" selected>100%</option></select></label>
+          <label class="chk"><input type="checkbox" id="advSyl" checked> Show syllables</label>
+        </div>
+        <div class="status" id="advStatus"></div>
+      </div>
+      <div class="chips" id="advPrepChips"></div>
+      <div class="res" id="advRes" hidden><div class="top"><div class="grade" id="advGrade"></div><div><b id="advScoreTxt"></b><div class="sub" id="advSubTxt"></div></div></div></div>
+      <div class="chips" id="advChips"></div>
+      <canvas class="roll" id="advRoll" width="1200" height="440" style="height:200px"></canvas>
     </main>
   </div>
 
@@ -590,6 +640,7 @@ async function loadPack(pwTry) {
   try {
     const pack = await decryptPack(enc, pw);
     addSongs(pack.songs || []);
+    if (pack.book) { try { localStorage.setItem('solfege-book', JSON.stringify(pack.book)); } catch (e) {} ADV.book = null; }
     try { localStorage.setItem('solfege-pw', pw); localStorage.setItem('solfege-pack-v', String(enc.v)); } catch (e) {}
     $('unlockBox').hidden = true;
     if (!S.song && LIB.length) openSong(LIB.slice().sort((a, b) => a.title.localeCompare(b.title))[0].id);
@@ -798,8 +849,8 @@ let R = null, runGain = null;
 function stopAll() {
   if (runGain && ac) { const g = runGain; g.gain.setTargetAtTime(0, ac.currentTime, .02); setTimeout(() => g.disconnect(), 300); runGain = null; }
   if (R) { R = null; }
-  S.playing = false; ['testP','ssTest'].forEach(id => { $(id).classList.remove('on'); });
-  $('testP').textContent = '\u{1F3AF} Test me'; $('ssTest').textContent = '\u{1F3AF} Test me';
+  S.playing = false; ['testP','ssTest','advTest'].forEach(id => { $(id).classList.remove('on'); });
+  $('testP').textContent = '\u{1F3AF} Test me'; $('ssTest').textContent = '\u{1F3AF} Test me'; $('advTest').textContent = '\u{1F3AF} Test me';
   document.querySelectorAll('.chip.now').forEach(c => c.classList.remove('now'));
 }
 // run: notes (with .t .d .m in beats), opts: {mode:'play'|'echo'|'test', bpm, tr, where:'song'|'sight', onDone}
@@ -841,6 +892,7 @@ function tick() {
   if (j !== R.last) {
     R.last = j;
     document.querySelectorAll(o.chips + ' .chip').forEach((c, i) => c.classList.toggle('now', i === j));
+    if (o.onNote) o.onNote(j);
     drawRoll(o.canvas, R.notes, o.key, j, R.trace);
   } else if (S.testing && R.trace.length % 6 === 0) drawRoll(o.canvas, R.notes, o.key, j, R.trace);
   const msg = cur ? (cur.kind === 'test' ? '<span class="turn">Sing it: follow the lights</span>' : cur.kind === 'ghost' ? '<span class="turn">Your turn: sing it back</span>' : 'Listen\u{2026}') :
@@ -865,12 +917,12 @@ function gradeNotes(r) {
 function finishRun(r) {
   stopAll();
   const o = r.opts;
-  if (o.mode !== 'test') { o.statusEl.textContent = o.mode === 'echo' ? 'Nice. Try "Test me" when it feels solid.' : ''; o.statusEl.dataset.msg = ''; drawRoll(o.canvas, r.notes, o.key, -1); if (o.onDone) o.onDone(null); return; }
+  if (o.mode !== 'test') { o.statusEl.textContent = o.mode === 'echo' ? 'Nice. Try "Test me" when it feels solid.' : ''; o.statusEl.dataset.msg = ''; drawRoll(o.canvas, r.notes, o.key, -1); if (o.onDone) o.onDone(null, r); return; }
   const g = gradeNotes(r);
   document.querySelectorAll(o.chips + ' .chip').forEach((c, i) => { c.classList.remove('ok', 'close', 'off', 'miss'); c.classList.add(g.res[i]); });
   drawRoll(o.canvas, r.notes, o.key, -1, r.trace, g.res);
   o.statusEl.textContent = g.heard ? `Test finished: ${g.grade}` : 'Nothing was heard.'; o.statusEl.dataset.msg = '';
-  if (o.onDone) o.onDone(g);
+  if (o.onDone) o.onDone(g, r);
 }
 
 /* song buttons */
@@ -992,13 +1044,255 @@ function buildReport() {
 }
 $('repCopy').onclick = async () => { try { await navigator.clipboard.writeText(S.report || ''); $('repNote').textContent = 'Copied.'; } catch (e) { const t = $('repText'); t.hidden = false; t.value = S.report || ''; t.focus(); t.select(); $('repNote').textContent = 'Select all and copy.'; } };
 
+/* ---------- advanced (Russian-school) solfege ---------- */
+const MODES = {
+  natMaj:{name:'Major (natural)', minor:false, up:[0,2,4,5,7,9,11], down:[0,2,4,5,7,9,11],
+    cells:[[[11,12],'ti rises to do'], [[5,4],'fa falls to mi'], [[9,7],'la falls to sol']]},
+  harMaj:{name:'Major (harmonic: lowered 6th)', minor:false, up:[0,2,4,5,7,8,11], down:[0,2,4,5,7,8,11],
+    cells:[[[8,7],'le falls to sol'], [[8,11,12],'le to ti: the wide step (augmented 2nd), then do'], [[5,4],'fa falls to mi']]},
+  melMaj:{name:'Major (melodic: 6th and 7th lowered going down)', minor:false, up:[0,2,4,5,7,9,11], down:[0,2,4,5,7,8,10],
+    cells:[[[12,10,8,7],'coming down: do te le sol'], [[11,12],'going up: ti rises to do']]},
+  natMin:{name:'Minor (natural)', minor:true, up:[0,2,3,5,7,8,10], down:[0,2,3,5,7,8,10],
+    cells:[[[10,12],'sol rises to la (no leading note)'], [[8,7],'fa falls to mi'], [[2,3],'ti rises to do']]},
+  harMin:{name:'Minor (harmonic: raised 7th)', minor:true, up:[0,2,3,5,7,8,11], down:[0,2,3,5,7,8,11],
+    cells:[[[11,12],'si rises to la'], [[8,11,12],'fa to si: the wide step (augmented 2nd), then la'], [[8,7],'fa falls to mi']]},
+  melMin:{name:'Minor (melodic: raised 6th and 7th going up)', minor:true, up:[0,2,3,5,7,9,11], down:[0,2,3,5,7,8,10],
+    cells:[[[7,9,11,12],'going up: mi fi si la'], [[12,10,8,7],'coming down: la sol fa mi']]}
+};
+const MAJ_FIFTHS = {0:0, 7:1, 2:2, 9:3, 4:4, 11:5, 6:6, 5:-1, 10:-2, 3:-3, 8:-4, 1:-5};
+const VF_KEY = {0:'C', 1:'G', 2:'D', 3:'A', 4:'E', 5:'B', 6:'F#', 7:'C#', '-1':'F', '-2':'Bb', '-3':'Eb', '-4':'Ab', '-5':'Db', '-6':'Gb', '-7':'Cb'};
+const RHY = {
+  '2/4':{bar:2, beats:[2,4], 1:[[1,1],[2]], 2:[[.5,.5,1],[1,.5,.5],[1.5,.5],[.5,.5,.5,.5]], 3:[[.25,.25,.5,1],[.5,.25,.25,1],[.75,.25,1],[.5,1,.5]]},
+  '3/4':{bar:3, beats:[3,4], 1:[[1,1,1],[2,1],[1,2]], 2:[[1.5,.5,1],[.5,.5,1,1],[1,.5,.5,1],[1,1,.5,.5]], 3:[[.75,.25,1,1],[.5,1,.5,1],[.25,.25,.5,1,1],[1,.75,.25,1]]},
+  '4/4':{bar:4, beats:[4,4], 1:[[1,1,1,1],[2,1,1],[1,1,2],[2,2]], 2:[[1.5,.5,1,1],[.5,.5,1,.5,.5,1],[1,.5,.5,2],[1,1,1.5,.5]], 3:[[.75,.25,.5,.5,2],[.5,1,.5,2],[.25,.25,.5,1,1,1],[1,.75,.25,1,1]]},
+  '6/8':{bar:3, beats:[6,8], 1:[[1.5,1.5],[1,.5,1.5],[1,.5,1,.5]], 2:[[.5,.5,.5,1.5],[1.5,1,.5],[.5,.5,.5,1,.5]], 3:[[.75,.25,.5,1.5],[.5,.5,.5,.5,.5,.5],[1,.5,.25,.25,.5,.5]]}
+};
+const ADV = { view:'gen', ex:null, book:null, vf:null, vfLoading:null, staveNotes:[] };
+const advKeyName = pc => (MAJ_FIFTHS[pc] < 0 ? FLATN : SHARPN)[pc];
+function modeKey(tonicPc, mode) {           // key signature (fifths) and the 'do' used for syllables
+  const m = MODES[mode], doPc = m.minor ? (tonicPc + 3) % 12 : tonicPc;
+  const f = MAJ_FIFTHS[doPc]; return {fifths:f, key:tonicFromFifths(f)};
+}
+function degNote(base, tonicL, tonicPc, scale, deg) {   // deg can be negative or above 7; returns {m, L, a}
+  const oct = Math.floor(deg / 7), i = ((deg % 7) + 7) % 7;
+  const m = base + scale[i] + 12 * oct, L = (tonicL + i) % 7;
+  const pc = ((m % 12) + 12) % 12; const a = ((pc - LPC[L] + 18) % 12) - 6;
+  return {m, L, a};
+}
+function tonicBase(tonicPc, clef) { let b = 60 + tonicPc; if (b > 67) b -= 12; return clef === 'bass' ? b - 12 : b; }
+function advTonicL(tonicPc, mode) { const {key} = modeKey(tonicPc, mode); return MODES[mode].minor ? (key.L + 5) % 7 : key.L; }
+
+/* the melody generator: two phrases, first ends open (on sol or re), second closes on the tonic */
+function advGenerate() {
+  const tonicPc = +$('advKey').value, mode = $('advMode').value, meter = $('advMeter').value, lvl = +$('advLvl').value, bars = +$('advLen').value, clef = $('advClef').value;
+  const M = MODES[mode], R = RHY[meter], tL = advTonicL(tonicPc, mode), base = tonicBase(tonicPc, clef);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const pool = [...R[1], ...(lvl >= 2 ? R[2] : []), ...(lvl >= 3 ? R[3] : [])];
+  const half = bars / 2, items = []; let t = 0, deg = pick([0, 2, 4]), prevLeap = 0;
+  for (let b = 0; b < bars; b++) {
+    const endA = b === half - 1, endB = b === bars - 1;
+    let rhythm = endB ? [R.bar] : endA ? (R.bar >= 3 && Math.random() < .5 ? [R.bar - (meter === '6/8' ? 1.5 : 1), meter === '6/8' ? 1.5 : 1] : [R.bar]) : pick(pool);
+    if (endA && rhythm.length === 2) rhythm = [rhythm[0], rhythm[1]];
+    rhythm.forEach((d, k) => {
+      const last = k === rhythm.length - 1;
+      if (b === 0 && k === 0) { /* keep start */ }
+      else if (endB && last) deg = 0;
+      else if (endA && last) deg = pick([4, 1, -3]);
+      else if (b === bars - 1 || (b === bars - 2 && k >= rhythm.length - 1)) deg = pick([1, -1, 2]);
+      else {
+        let step;
+        if (Math.abs(prevLeap) >= 3) step = -Math.sign(prevLeap);                       // after a leap, step back
+        else { const r = Math.random(); const triad = [2, -2, 3, -3, 4, -4].filter(x => [0, 2, 4].includes(((deg + x) % 7 + 7) % 7) && [0, 2, 4].includes(((deg % 7) + 7) % 7)); step = r < .8 || !triad.length ? pick([-1, 1, 1, -1, 1, -1]) : pick(triad); }
+        if (mode.startsWith('har') && Math.random() < .12) { if (((deg % 7) + 7) % 7 === 5) step = 1; }   // bring out the augmented 2nd
+        let nd = deg + step; if (nd < -2 || nd > 8) nd = deg - step; prevLeap = nd - deg; deg = nd;
+      }
+      const up = !items.length || deg >= items[items.length - 1].deg;
+      const n = degNote(base, tL, tonicPc, up ? M.up : M.down, deg);
+      items.push(Object.assign({t, d, deg}, n)); t += d;
+    });
+  }
+  // melodic modes: re-spell each note by direction
+  items.forEach((n, i) => { if (n.deg == null) return; const nx = items[i + 1], up = nx ? nx.deg >= n.deg : false; Object.assign(n, degNote(base, tL, tonicPc, up ? M.up : M.down, n.deg)); });
+  const {fifths, key} = modeKey(tonicPc, mode);
+  const tempo = +$('advTempo').value;
+  ADV.ex = {title:`${advKeyName(tonicPc)} ${M.minor ? 'minor' : 'major'} \u{B7} ${M.name}`, clef, fifths, key, mode, tonicPc, time:meter, bar:R.bar, tempo,
+    tempoText:tempo <= 66 ? 'Adagio' : tempo <= 80 ? 'Andante' : tempo <= 96 ? 'Moderato' : 'Allegretto', dyn:pick(['p', 'mp', 'mf', 'f']),
+    items:items.map(n => ({t:n.t, d:n.d, m:n.m, L:n.L, a:n.a})), bars:Array.from({length:bars}, (_, i) => i * R.bar)};
+  advShow();
+}
+
+/* book exercises (private builds and the locked pack only) */
+function loadBook() {
+  if (ADV.book) return ADV.book;
+  let b = BUILTIN && BUILTIN.book ? BUILTIN.book : null;
+  if (!b) { try { b = JSON.parse(localStorage.getItem('solfege-book') || 'null'); } catch (e) {} }
+  return ADV.book = b && b.exercises ? b : null;
+}
+function bookExercise(i) {
+  const e = loadBook().exercises[i], [bn, bd] = e.time.split('/').map(Number), bar = bn * 4 / bd;
+  const items = []; let t = 0;
+  e.notes.forEach(([p, d]) => { if (p !== 'rest') { const r = parsePitchName(p); items.push({t, d, m:r.m, L:r.L, a:r.a}); } else items.push({t, d, rest:true}); t += d; });
+  const barStarts = (e.bars || []).map(k => { let s = 0; for (let j = 0; j < k; j++) s += e.notes[j][1]; return s; });
+  const f = e.fifths ?? 0, key = tonicFromFifths(f), doPc = key.pc, tonicPc = e.minor ? (doPc + 9) % 12 : doPc;
+  const mn = (e.mode_note || '').toLowerCase(), mode = (e.minor ? (mn.includes('harmonic') ? 'harMin' : mn.includes('melodic') ? 'melMin' : 'natMin') : (mn.includes('harmonic') ? 'harMaj' : mn.includes('melodic') ? 'melMaj' : 'natMaj'));
+  const bpm = +((e.tempo || '').match(/\d+/) || [80])[0];
+  return {title:`No. ${e.n} \u{B7} ${e.composer || ''}`, sub:[e.key, e.time, e.tempo].filter(Boolean).join(' \u{B7} ') + (e.incomplete ? ' \u{B7} continues on a page we don\u{2019}t have' : ''),
+    clef:e.clef || 'treble', fifths:f, key, mode, tonicPc, time:e.time, bar, tempo:bpm, tempoText:(e.tempo || '').replace(/[\d=\u{2669}\s]+$/u, '').trim(), dyn:(e.dynamics || [])[0] || '',
+    items, bars:barStarts.length ? barStarts : null};
+}
+function parsePitchName(p) {
+  const L = LETTERS.indexOf(p[0].toUpperCase()), acc = p.slice(1).replace(/-?\d+$/, ''), oct = parseInt(p.match(/-?\d+$/)[0], 10);
+  const a = (acc.match(/#/g) || []).length - (acc.match(/b/g) || []).length;
+  return {m:12 * (oct + 1) + LPC[L] + a, L, a};
+}
+
+/* notation (VexFlow, loaded on first use) */
+function loadVF() {
+  if (window.Vex) return Promise.resolve(window.Vex);
+  if (!ADV.vfLoading) ADV.vfLoading = new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js'; s.onload = () => ok(window.Vex); s.onerror = bad; document.head.appendChild(s); });
+  return ADV.vfLoading;
+}
+const DURS = [[4,'w',0],[3,'h',1],[2,'h',0],[1.5,'q',1],[1,'q',0],[.75,'8',1],[.5,'8',0],[.375,'16',1],[.25,'16',0],[.125,'32',0]];
+function splitDur(d) { const out = []; let r = d; while (r > .001) { const x = DURS.find(z => z[0] <= r + 1e-6); if (!x) break; out.push(x); r -= x[0]; } return out; }
+async function renderScore(ex) {
+  const box = $('advScore'); box.innerHTML = '<p class="note">Loading the notation\u{2026}</p>';
+  let Vex; try { Vex = await loadVF(); } catch (e) { box.innerHTML = '<p class="note">The notation needs an internet connection the first time. The syllables and the note picture below still work.</p>'; return; }
+  const VF = Vex.Flow; box.innerHTML = '';
+  const W = Math.max(320, box.clientWidth || 700);
+  // bars
+  const barStarts = ex.bars || (() => { const b = []; const end = ex.items.reduce((s, n) => Math.max(s, n.t + n.d), 0); for (let x = 0; x < end - 1e-6; x += ex.bar) b.push(x); return b; })();
+  const nb = barStarts.length, perRow = W < 520 ? 2 : W < 860 ? 3 : 4, rows = Math.ceil(nb / perRow), rowH = 118;
+  const rend = new VF.Renderer(box, VF.Renderer.Backends.SVG); rend.resize(W, rows * rowH + 40); const ctx = rend.getContext();
+  const [bn, bd] = ex.time.split('/').map(Number), spec = VF_KEY[ex.fifths] || 'C';
+  ADV.staveNotes = []; let eng = 0;
+  for (let b = 0; b < nb; b++) {
+    const row = Math.floor(b / perRow), col = b % perRow, first = col === 0;
+    const extra = first ? 70 + Math.abs(ex.fifths) * 10 + (b === 0 ? 24 : 0) : 0;
+    const bw = (W - 20 - (first ? 0 : 0)) / perRow;
+    const x = 10 + col * bw, w = bw + (first ? 0 : 0);
+    const st = new VF.Stave(x, 20 + row * rowH, w);
+    if (first) { st.addClef(ex.clef).addKeySignature(spec); }
+    if (b === 0) { st.addTimeSignature(ex.time); if (ex.tempoText || ex.tempo) st.setTempo({name:ex.tempoText || undefined, duration:'q', bpm:ex.tempo}, -12); }
+    if (b === nb - 1) st.setEndBarType(VF.Barline.type.END);
+    st.setContext(ctx).draw();
+    const a = barStarts[b], z = b + 1 < nb ? barStarts[b + 1] : Infinity;
+    const inBar = ex.items.filter(n => n.t >= a - 1e-6 && n.t < z - 1e-6);
+    const notes = [], ties = [];
+    inBar.forEach(n => {
+      const parts = splitDur(n.d); let prev = null;
+      parts.forEach(([_, dur, dot], k) => {
+        let sn;
+        if (n.rest) sn = new VF.StaveNote({clef:ex.clef, keys:[ex.clef === 'bass' ? 'd/3' : 'b/4'], duration:dur + 'r'});
+        else sn = new VF.StaveNote({clef:ex.clef, keys:[LETTERS[n.L].toLowerCase() + (n.a > 0 ? '#'.repeat(n.a) : n.a < 0 ? 'b'.repeat(-n.a) : '') + '/' + (Math.floor((n.m - n.a) / 12) - 1)], duration:dur, auto_stem:true});
+        if (dot) VF.Dot.buildAndAttach([sn], {all:true});
+        if (!n.rest && b === 0 && !notes.length && ex.dyn) sn.addModifier(new VF.Annotation(ex.dyn).setFont('Times', 13, 'bold italic').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+        notes.push(sn); if (prev && !n.rest) ties.push(new VF.StaveTie({first_note:prev, last_note:sn, first_indices:[0], last_indices:[0]}));
+        if (!n.rest && k === 0) ADV.staveNotes[eng] = sn; prev = sn;
+      });
+      if (!n.rest) eng++;
+    });
+    if (!notes.length) continue;
+    const voice = new VF.Voice({num_beats:bn, beat_value:bd}).setMode(VF.Voice.Mode.SOFT).addTickables(notes);
+    VF.Accidental.applyAccidentals([voice], spec);
+    const beams = VF.Beam.generateBeams(notes.filter(n => !n.isRest()), bd === 8 ? {groups:[new VF.Fraction(3, 8)]} : {});
+    new VF.Formatter().joinVoices([voice]).format([voice], w - (st.getNoteStartX() - x) - 14);
+    voice.draw(ctx, st); beams.forEach(bm => bm.setContext(ctx).draw()); ties.forEach(tt => tt.setContext(ctx).draw());
+  }
+}
+function markScore(j) {
+  document.querySelectorAll('#advScore .vf-cur').forEach(e => e.classList.remove('vf-cur'));
+  const sn = ADV.staveNotes[j]; if (!sn) return;
+  const el = sn.getSVGElement ? sn.getSVGElement() : sn.getAttribute && sn.getAttribute('el'); if (el) el.classList.add('vf-cur');
+}
+
+/* show the current exercise */
+const advNotes = () => ADV.ex ? ADV.ex.items.filter(n => !n.rest) : [];
+function advChips(res) {
+  const ex = ADV.ex, show = $('advSyl').checked;
+  $('advChips').innerHTML = show ? advNotes().map((n, j) => { const syl = sylOf(n, ex.key); return `<div class="chip${isChrom(syl) ? ' chrom' : ''}${res ? ' ' + res[j] : ''}"><b>${syl}</b><span>${noteName(n.m, n.L, n.a, 0)}</span></div>`; }).join('') : '';
+}
+function advShow(res) {
+  const ex = ADV.ex; if (!ex) return;
+  S.fifthsView = ex.fifths;
+  $('advTitle').textContent = ex.title; $('advSub').textContent = ex.sub || `${ex.time} \u{B7} ${ex.tempoText} \u{2669} = ${ex.tempo} \u{B7} ${ex.dyn}`;
+  advChips(res); renderScore(ex); drawRoll($('advRoll'), advNotes(), ex.key, -1, null, res);
+  $('advRes').hidden = true; $('advStatus').textContent = 'Read it first: find do (or la), hum the first note, then tap "Tune the mode".';
+}
+function advOpts(mode) {
+  const ex = ADV.ex;
+  return {mode, bpm:ex.tempo * +$('advSpd').value, tr:0, key:ex.key, canvas:$('advRoll'), chips:'#advChips', statusEl:$('advStatus'), status:m => $('advStatus').textContent = m, onNote:markScore,
+    onDone:(g, r) => {
+      markScore(-1);
+      if (mode !== 'test' || !g) return;
+      const rh = rhythmScore(r), total = g.heard ? Math.round(.6 * g.score + .4 * rh) : 0, grade = total >= 90 ? 'A' : total >= 80 ? 'B' : total >= 70 ? 'C' : total >= 60 ? 'D' : 'F';
+      advChips(g.res); $('advRes').hidden = false; $('advGrade').textContent = g.heard ? grade : '\u{2013}';
+      $('advScoreTxt').textContent = g.heard ? `${total}/100 \u{B7} pitch ${g.score} \u{B7} rhythm ${rh}` : 'Nothing was heard';
+      $('advSubTxt').textContent = g.heard ? 'Rhythm = how much of each note you held on the right pitch at the right time.' + (g.avg != null ? ` Average distance from the notes: ${g.avg} cents.` : '') : 'Sing louder, move closer, and use headphones if the room is noisy.';
+      if (g.heard) { DB.adv = DB.adv || []; DB.adv.push({d:dk(new Date()), what:ADV.view === 'book' ? 'book ' + ex.title : ex.title, score:total}); DB.adv = DB.adv.slice(-300); markDay(); saveDB(); }
+    }};
+}
+function rhythmScore(r) {
+  let got = 0; const tr = r.trace;
+  r.notes.forEach(n => {
+    const a = n.t + .1 * n.d, b = n.t + .9 * n.d; let tot = 0, ok = 0;
+    for (const [x, p] of tr) if (x >= a && x <= b) { tot++; if (p != null) { let c = (p - n.m) * 100; c = ((c % 1200) + 1800) % 1200 - 600; if (Math.abs(c) <= 60) ok++; } }
+    if (tot && ok / tot >= .5) got++;
+  });
+  return Math.round(got / Math.max(1, r.notes.length) * 100);
+}
+/* the Russian prep routine: key, scale up and down, then the notes that give the mode its color */
+function advPrep() {
+  const ex = ADV.ex; if (!ex) return; if (S.playing) return stopAll();
+  const M = MODES[ex.mode], tL = advTonicL(ex.tonicPc, ex.mode), base = tonicBase(ex.tonicPc, 'treble');
+  const seq = []; let t = 0;
+  const add = (deg, d, sc) => { seq.push(Object.assign({t, d}, degNote(base, tL, ex.tonicPc, sc, deg))); t += d; };
+  for (let i = 0; i <= 7; i++) add(i, 1, M.up);
+  for (let i = 6; i >= 0; i--) add(i, i === 0 ? 2 : 1, M.down);
+  const semToDeg = (sc, s) => { const o = Math.floor(s / 12), r = s - 12 * o; let i = sc.indexOf(r); if (i < 0) i = M.up.indexOf(r) >= 0 ? M.up.indexOf(r) : 0; return i + 7 * o; };
+  const cellTxt = [];
+  M.cells.forEach(([cell, txt]) => { t += 1; cell.forEach((s, k) => { const sc = M.up.includes(((s % 12) + 12) % 12) ? M.up : M.down; add(semToDeg(sc, s), k === cell.length - 1 ? 2 : 1, sc); }); cellTxt.push(txt); });
+  // cadence first: I IV V I in the mode
+  ensureAudio(); const now = ac.currentTime + .05, triad = (d, sc) => [0, 2, 4].map(x => degNote(base - 12, tL, ex.tonicPc, sc, d + x).m);
+  const V = M.minor && ex.mode === 'natMin' ? M.up : MODES[M.minor ? 'harMin' : ex.mode].up;
+  [[0, M.up], [3, M.down], [4, V], [0, M.up]].forEach(([d, sc], i) => triad(d, sc).forEach(m => piano(m, now + i * .9, .85, .32, master)));
+  $('advStatus').innerHTML = `Hear the key, then sing each part back after the piano: the scale up and down, then ${cellTxt.join('; ')}.`;
+  setTimeout(() => run(seq, Object.assign(advOpts('echo'), {bpm:84, chips:'#advPrepChips'})), 3900);
+  $('advPrepChips').innerHTML = seq.map(n => `<div class="chip${isChrom(sylOf(n, ex.key)) ? ' chrom' : ''}"><b>${sylOf(n, ex.key)}</b><span>${noteName(n.m, n.L, n.a, 0)}</span></div>`).join('');
+}
+function setAdvView(v) {
+  stopAll(); ADV.view = v;
+  ['gen', 'book'].forEach(k => { $('adv-' + k).setAttribute('aria-pressed', k === v); });
+  $('advGenCtl').hidden = v !== 'gen'; $('advBookCtl').hidden = v !== 'book';
+  if (v === 'book') { const b = loadBook(); if (!b) { $('advBookMsg').hidden = false; $('advBookSel').parentElement.hidden = true; ADV.ex = null; $('advScore').innerHTML = ''; $('advChips').innerHTML = ''; $('advTitle').textContent = 'Book exercises'; $('advSub').textContent = ''; return; }
+    $('advBookMsg').hidden = true; $('advBookSel').parentElement.hidden = false;
+    $('advBookSel').innerHTML = b.exercises.map((e, i) => `<option value="${i}">No. ${e.n} \u{B7} ${esc(e.composer || '')} \u{B7} ${esc(e.key || '')}</option>`).join('');
+    ADV.ex = bookExercise(+$('advBookSel').value || 0); advShow(); }
+  else advGenerate();
+}
+(() => {
+  $('advKey').innerHTML = [0, 7, 2, 9, 4, 11, 5, 10, 3, 8, 1, 6].map(pc => `<option value="${pc}">${advKeyName(pc)}</option>`).join('');
+  $('advKey').value = '2';
+  $('advMode').innerHTML = Object.entries(MODES).map(([k, m]) => `<option value="${k}">${m.name}</option>`).join(''); $('advMode').value = 'harMin';
+  ['advKey', 'advMode', 'advMeter', 'advLvl', 'advLen', 'advClef', 'advTempo'].forEach(id => $(id).onchange = () => { stopAll(); advGenerate(); });
+  $('advNew').onclick = () => { stopAll(); advGenerate(); };
+  $('adv-gen').onclick = () => setAdvView('gen'); $('adv-book').onclick = () => setAdvView('book');
+  $('advBookSel').onchange = e => { stopAll(); ADV.ex = bookExercise(+e.target.value); advShow(); };
+  $('advPrep').onclick = advPrep;
+  $('advStart').onclick = () => { const n = advNotes()[0]; if (!n) return; ensureAudio(); const k = ADV.ex.key; piano(tonicBase(ADV.ex.tonicPc, 'treble'), ac.currentTime + .05, 1, .4, master); piano(n.m, ac.currentTime + 1.2, 1.2, .55, master); $('advStatus').textContent = 'The tonic, then your first note.'; };
+  $('advPlay').onclick = () => { if (S.playing) return stopAll(); if (advNotes().length) run(advNotes(), advOpts('play')); };
+  $('advTest').onclick = () => { if (S.playing) return stopAll(); $('advRes').hidden = true; advChips(); run(advNotes(), advOpts('test')).then(() => { if (S.testing) { $('advTest').textContent = '\u{25A0} Stop test'; $('advTest').classList.add('on'); } }); };
+  $('advSyl').onchange = () => advChips();
+  let rt = 0; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!$('advView').hidden && ADV.ex) renderScore(ADV.ex); }, 250); });
+})();
+
 /* ---------- tabs ---------- */
-const VIEWS = {songs:'songsView', sight:'sightView', int:'intView', basics:'basicsView', prog:'progView'};
+const VIEWS = {songs:'songsView', sight:'sightView', adv:'advView', int:'intView', basics:'basicsView', prog:'progView'};
 function setTab(k) {
   stopAll();
   Object.entries(VIEWS).forEach(([t, v]) => { $(v).hidden = t !== k; $('t-' + t).setAttribute('aria-selected', t === k); });
   if (k === 'sight' && !SS.notes.length) genMelody();
   if (k === 'int') buildIvGrid();
+  if (k === 'adv') { if (!ADV.ex) setAdvView(ADV.view); else renderScore(ADV.ex); }
   if (k === 'prog') buildReport();
 }
 Object.keys(VIEWS).forEach(k => $('t-' + k).onclick = () => setTab(k));
