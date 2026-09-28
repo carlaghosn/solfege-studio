@@ -58,6 +58,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .song b{font-size:14.5px}
 .song small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
 .song .x{color:var(--muted);font-size:12px;border:0;background:none;cursor:pointer;padding:0 2px}
+.pick{width:100%;font:700 15px var(--body);background:var(--surface-2);color:var(--ink);border:2px solid var(--accent);border-radius:12px;padding:10px;margin:4px 0 12px}
+.add2{font:700 13.5px var(--body);background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;width:100%;margin-bottom:8px}
+.unlock{background:var(--surface-2);border-radius:12px;padding:10px;margin-bottom:12px}
+.unlock input{width:100%;font:15px var(--body);padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin:6px 0}
 .add{font:800 15px var(--body);background:var(--accent);color:#fff;border:0;border-radius:12px;padding:11px 14px;cursor:pointer;width:100%;margin-bottom:10px}
 .drop{border:2px dashed var(--line);border-radius:12px;padding:10px;text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
 .drop.over{border-color:var(--accent);color:var(--ink)}
@@ -152,6 +156,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   <div class="grid" id="songsView">
     <nav class="card">
       <h2>My songs</h2>
+      <form class="unlock" id="unlockBox" hidden>
+        <b>&#x1F512; Unlock my songs</b>
+        <p class="note" style="margin:2px 0 0">Type the song password once. After that, songs load by themselves.</p>
+        <input type="password" id="unlockPw" autocomplete="current-password" aria-label="Song password">
+        <button class="go" type="submit" style="width:100%">Unlock</button>
+        <p class="note" id="unlockMsg"></p>
+      </form>
+      <label for="songPick" class="hint" style="display:block;margin:0 0 2px">Choose a song</label>
+      <select class="pick" id="songPick"><option value="">&#x2014; pick a song &#x2014;</option></select>
       <button class="add" id="addBtn">+ Add a song file</button>
       <input type="file" id="fileIn" hidden>
       <div class="drop" id="drop">or drop a file here</div>
@@ -514,7 +527,54 @@ async function importFile(f) {
     $('songEmpty').hidden = false; $('songBody').hidden = true;
   }
 }
+function buildPicker() {
+  const sel = $('songPick'); const cur = S.song ? S.song.id : '';
+  sel.innerHTML = '<option value="">\u{2014} pick a song \u{2014}</option>' + LIB.slice().sort((a, b) => a.title.localeCompare(b.title)).map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
+  sel.value = cur;
+}
+$('songPick').onchange = e => { if (e.target.value) openSong(e.target.value); };
+function unpackSong(r) {
+  // compact pack format: notes as [t, d, m, L, a, meas]
+  if (!r || !r.parts) return null;
+  return {id:r.id || 'p' + Math.random().toString(36).slice(2), title:r.title, file:'song pack', fifths:r.fifths, minor:!!r.minor, tempo:r.tempo || 90, part:r.part || 0, pack:true, checks:r.checks || null,
+    parts:r.parts.map(p => ({name:p.name, notes:p.notes.map(n => Array.isArray(n) ? {t:n[0], d:n[1], m:n[2], L:n[3], a:n[4], meas:n[5], ly:''} : n)}))};
+}
+function addSongs(list) {
+  list.forEach(raw => {
+    const s = unpackSong(raw); if (!s) return;
+    const i = LIB.findIndex(x => x.title.toLowerCase() === s.title.toLowerCase());
+    if (i >= 0) { s.id = LIB[i].id; LIB[i] = s; } else LIB.push(s);
+  });
+  saveLib(); buildLibrary();
+}
+/* ---------- password-locked song pack (public app) ---------- */
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decryptPack(enc, pw) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const aes = await crypto.subtle.deriveKey({name:'PBKDF2', salt:b64(enc.salt), iterations:enc.iter, hash:'SHA-256'}, key, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(enc.iv)}, aes, b64(enc.data));
+  const txt = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  return JSON.parse(txt);
+}
+async function loadPack(pwTry) {
+  let enc; try { const r = await fetch('songs.pack.json', {cache:'no-cache'}); if (!r.ok) return; enc = await r.json(); } catch (e) { return; }
+  let pw = pwTry || null; try { pw = pw || localStorage.getItem('solfege-pw'); } catch (e) {}
+  if (!pw) { $('unlockBox').hidden = false; return; }
+  let saved = null; try { saved = localStorage.getItem('solfege-pack-v'); } catch (e) {}
+  if (!pwTry && saved === String(enc.v)) return;          // already have this version
+  try {
+    const pack = await decryptPack(enc, pw);
+    addSongs(pack.songs || []);
+    try { localStorage.setItem('solfege-pw', pw); localStorage.setItem('solfege-pack-v', String(enc.v)); } catch (e) {}
+    $('unlockBox').hidden = true;
+    if (!S.song && LIB.length) openSong(LIB.slice().sort((a, b) => a.title.localeCompare(b.title))[0].id);
+  } catch (e) {
+    $('unlockBox').hidden = false; $('unlockMsg').textContent = pwTry ? 'That password didn\u{2019}t work. Check it and try again.' : 'The songs were updated. Type the password again.';
+  }
+}
+$('unlockBox').addEventListener('submit', e => { e.preventDefault(); const pw = $('unlockPw').value.trim(); if (pw) loadPack(pw); });
 function buildLibrary() {
+  buildPicker();
   const box = $('library'); box.innerHTML = '';
   if (!LIB.length) { box.innerHTML = '<p class="note">No songs yet.</p>'; return; }
   LIB.forEach(s => {
@@ -533,6 +593,7 @@ function keyInfo() { const k = tonicFromFifths(S.song.fifths); return k; }
 function openSong(id) {
   stopAll();
   S.song = LIB.find(s => s.id === id); if (!S.song) return;
+  $('songPick').value = id;
   S.part = S.song.part || 0; S.tr = 0; S.pi = 0;
   $('songEmpty').hidden = true; $('songBody').hidden = false;
   $('sTitle').textContent = S.song.title;
@@ -878,8 +939,11 @@ function setTab(k) {
 Object.keys(VIEWS).forEach(k => $('t-' + k).onclick = () => setTab(k));
 
 /* ---------- start ---------- */
+const BUILTIN = /*BUILTIN_SONGS*/null;
+if (BUILTIN && BUILTIN.songs) { let v = null; try { v = localStorage.getItem('solfege-builtin-v'); } catch (e) {} if (v !== String(BUILTIN.v)) { addSongs(BUILTIN.songs); try { localStorage.setItem('solfege-builtin-v', String(BUILTIN.v)); } catch (e) {} } }
+if (!BUILTIN && location.protocol.startsWith('http')) loadPack();
 buildLibrary();
-if (LIB.length) openSong(LIB[0].id);
+if (LIB.length) openSong(LIB.slice().sort((a, b) => a.title.localeCompare(b.title))[0].id);
 $('ivScore').textContent = `${DB.iv.right} / ${DB.iv.total}`;
 })();
 </script>
