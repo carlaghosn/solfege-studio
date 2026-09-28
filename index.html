@@ -90,6 +90,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .pmap button.B{background:#e6f5d0;border-color:#b5dc86;color:#3b5e12}
 .pmap button.C{background:#fff4d6;border-color:#f0cf73;color:#6b4d00}
 .pmap button.D,.pmap button.F{background:#fde4e4;border-color:#f1a3a3;color:#8a1c1c}
+.deck{position:sticky;top:0;z-index:5;background:var(--surface);margin:12px -16px 0;padding:10px 16px 6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:0 6px 12px -10px rgba(0,0,0,.35)}
+.deckTop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.deckTop .where{flex:1;min-width:150px;display:flex;flex-direction:column;align-items:center;text-align:center;line-height:1.2}
+.deckTop .where b{font:800 17px var(--display)}
+.btn.arrow{font-size:20px;padding:6px 16px;line-height:1}
+.jump select{max-width:220px}
+.deckBtns{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:10px}
+.deck .status{margin-top:6px;min-height:22px}
+.manage{margin-top:10px}.manage summary{cursor:pointer;font-weight:800;font-size:14px;padding:4px 0}
+.allp{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.allp summary{cursor:pointer;font-weight:800}
+@media (max-width:600px){.jump{width:100%}.jump select{flex:1;max-width:none}.deckBtns .go{flex:1 1 100%}}
 .roll{width:100%;height:260px;display:block;margin-top:12px;border-radius:12px;background:var(--surface-2);touch-action:pan-y}
 .status{margin-top:10px;min-height:24px;font-weight:700}
 .status .turn{background:var(--accent);color:#fff;border-radius:8px;padding:2px 10px}
@@ -168,11 +180,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       </form>
       <label for="songPick" class="hint" style="display:block;margin:0 0 2px">Choose a song</label>
       <select class="pick" id="songPick"><option value="">&#x2014; pick a song &#x2014;</option></select>
+      <details class="manage" id="manage"><summary>Manage songs <span class="note">(add a file, see grades)</span></summary>
       <button class="add" id="addBtn">+ Add a song file</button>
       <input type="file" id="fileIn" hidden>
       <div class="drop" id="drop">or drop a file here</div>
       <div id="library"></div>
       <p class="note">Works with MuseScore (.mscz), MusicXML (.mxl, .musicxml) and MIDI (.mid) files, the downloads offered by MuseScore.com and most sheet-music stores. PDFs can&#x2019;t be read note by note. Songs stay on this device and are never uploaded.</p>
+      </details>
     </nav>
     <main class="card" id="songMain">
       <div class="empty" id="songEmpty"><b>Add a song to start</b>Tap "Add a song file" and choose the MuseScore, MusicXML or MIDI file for a song. Every note of the melody gets its solf&#xE8;ge syllable, split into phrases to practice one at a time.</div>
@@ -185,26 +199,28 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
           <label class="ctl" for="spdSel">Speed <select id="spdSel"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option></select></label>
           <label class="chk"><input type="checkbox" id="lyrChk" checked> Show words</label>
         </div>
-        <div class="nav">
-          <button class="btn" id="prevP">&#x2190; Phrase</button>
-          <b id="pLabel">Phrase 1 of 1</b>
-          <button class="btn" id="nextP">Phrase &#x2192;</button>
-          <span class="note" id="pWhere"></span>
+        <div class="deck" id="deck">
+          <div class="deckTop">
+            <button class="btn arrow" id="prevP" aria-label="Previous phrase">&#x2190;</button>
+            <div class="where"><b id="pLabel">Phrase 1 of 1</b><span class="note" id="pWhere"></span></div>
+            <button class="btn arrow" id="nextP" aria-label="Next phrase">&#x2192;</button>
+            <label class="ctl jump" for="secJump">Jump to <select id="secJump"></select></label>
+          </div>
+          <div class="deckBtns">
+            <button class="go" id="playP">&#x25B6; Play phrase</button>
+            <button class="btn" id="echoP">&#x1F501; Play, then my turn</button>
+            <button class="btn" id="testP">&#x1F3AF; Test me</button>
+            <button class="btn" id="playAll">&#x25B6; To the end</button>
+            <label class="chk"><input type="checkbox" id="loopChk"> Loop</label>
+          </div>
+          <div class="status" id="sStatus"></div>
         </div>
-        <div class="pmap" id="pmap" aria-label="All phrases"></div>
-        <canvas class="roll" id="roll" width="1200" height="520"></canvas>
-        <div class="legend"><span><i style="background:var(--accent)"></i>scale note</span><span><i style="background:var(--chrom)"></i>chromatic note (raised or lowered)</span><span><i style="background:var(--leap)"></i>big leap (a 5th or more)</span></div>
-        <div class="row">
-          <button class="go" id="playP">&#x25B6; Play phrase</button>
-          <button class="btn" id="echoP">&#x1F501; Play, then my turn</button>
-          <button class="btn" id="testP">&#x1F3AF; Test me</button>
-          <button class="btn" id="playAll">&#x25B6; From here to the end</button>
-          <label class="chk"><input type="checkbox" id="loopChk"> Loop phrase</label>
-        </div>
-        <div class="status" id="sStatus"></div>
         <div class="chips" id="sChips"></div>
         <div class="res" id="sRes" hidden><div class="top"><div class="grade" id="rGrade"></div><div><b id="rScore"></b><div class="sub" id="rSub"></div></div></div></div>
+        <canvas class="roll" id="roll" width="1200" height="520"></canvas>
+        <div class="legend"><span><i style="background:var(--accent)"></i>scale note</span><span><i style="background:var(--chrom)"></i>chromatic note (raised or lowered)</span><span><i style="background:var(--leap)"></i>big leap (a 5th or more)</span></div>
         <div class="meter"><span class="n" id="mNote">&#x2013;</span><span id="mInfo">Mic turns on for tests. Headphones help.</span></div>
+        <details class="allp" id="allP"><summary>All phrases <span class="note">(colors show test grades)</span></summary><div class="pmap" id="pmap" aria-label="All phrases"></div></details>
       </div>
     </main>
   </div>
@@ -535,7 +551,7 @@ function buildPicker() {
   sel.innerHTML = '<option value="">\u{2014} pick a song \u{2014}</option>' + LIB.slice().sort((a, b) => a.title.localeCompare(b.title)).map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
   sel.value = cur;
 }
-$('songPick').onchange = e => { if (e.target.value) openSong(e.target.value); };
+$('songPick').onchange = e => { if (e.target.value) { openSong(e.target.value); if (innerWidth <= 860) setTimeout(() => $('songMain').scrollIntoView({behavior:'smooth', block:'start'}), 50); } };
 function unpackSong(r) {
   // compact pack format: notes as [t, d, m, L, a, meas]
   if (!r || !r.parts) return null;
@@ -652,6 +668,10 @@ function renderPhrase() {
   $('pLabel').textContent = lab;
   $('pWhere').textContent = ph.length ? `Bar ${ph[0].meas}${ph[ph.length - 1].meas !== ph[0].meas ? '\u{2013}' + ph[ph.length - 1].meas : ''}` : '';
   $('prevP').disabled = S.pi === 0; $('nextP').disabled = S.pi >= S.phrases.length - 1;
+  const jumps = []; S.phrases.forEach((x, i) => { const nm = x.sec || ('Phrase ' + (i + 1)); if (!i || nm !== (S.phrases[i - 1].sec || '')) jumps.push([nm, i]); });
+  let jsel = 0; jumps.forEach((j, k) => { if (j[1] <= S.pi) jsel = k; });
+  $('secJump').innerHTML = jumps.map((j, k) => `<option value="${j[1]}"${k === jsel ? ' selected' : ''}>${esc(j[0])}</option>`).join('');
+  $('secJump').parentElement.hidden = jumps.length < 2;
   let lastSec = null;
   $('pmap').innerHTML = S.phrases.map((x, i) => {
     const g = tests[i]; let head = '';
@@ -667,6 +687,7 @@ function renderPhrase() {
   }).join('');
   $('sRes').hidden = true; drawRoll($('roll'), ph, k, -1);
 }
+$('secJump').onchange = e => { stopAll(); S.pi = +e.target.value; renderPhrase(); };
 $('pmap').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopAll(); S.pi = +b.dataset.i; renderPhrase(); });
 $('prevP').onclick = () => { stopAll(); S.pi = Math.max(0, S.pi - 1); renderPhrase(); };
 $('nextP').onclick = () => { stopAll(); S.pi = Math.min(S.phrases.length - 1, S.pi + 1); renderPhrase(); };
