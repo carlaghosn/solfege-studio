@@ -252,9 +252,12 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
       <p class="hint">Russian-school sight-singing: read real notation in the six major and minor modes, tune your ear to the mode first, then sing the melody. Graded on pitch and rhythm.</p>
       <div class="row">
         <button class="btn" id="adv-gen" aria-pressed="true">&#x2728; Melody generator</button>
+        <button class="btn" id="adv-real" aria-pressed="false">&#x1F3B5; Real melodies</button>
+        <button class="btn" id="adv-pop" aria-pressed="false">&#x1F3A4; Pop lines (my songs)</button>
         <button class="btn" id="adv-book" aria-pressed="false">&#x1F4D6; Book exercises</button>
       </div>
       <div class="row" id="advGenCtl">
+        <label class="ctl" for="advStyle">Style <select id="advStyle"><option value="classic">Classical (Russian school)</option><option value="pop">Pop</option></select></label>
         <label class="ctl" for="advKey">Tonic <select id="advKey"></select></label>
         <label class="ctl" for="advMode">Mode <select id="advMode"></select></label>
         <label class="ctl" for="advMeter">Meter <select id="advMeter"><option>2/4</option><option selected>3/4</option><option>4/4</option><option>6/8</option></select></label>
@@ -263,6 +266,15 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
         <label class="ctl" for="advClef">Clef <select id="advClef"><option value="treble">Treble</option><option value="bass">Bass (sing an octave up)</option></select></label>
         <label class="ctl" for="advTempo">Tempo <select id="advTempo"><option value="60">60</option><option value="72" selected>72</option><option value="88">88</option><option value="100">100</option></select></label>
         <button class="go" id="advNew">&#x2728; New melody</button>
+      </div>
+      <div class="row" id="advRealCtl" hidden>
+        <label class="ctl" for="advRealSel">Melody <select id="advRealSel"></select></label>
+        <p class="note">Famous melodies old enough to be free for everyone (public domain), easiest first.</p>
+      </div>
+      <div class="row" id="advPopCtl" hidden>
+        <label class="ctl" for="advPopSong">Song <select id="advPopSong"></select></label>
+        <label class="ctl" for="advPopLine">Line <select id="advPopLine"></select></label>
+        <p class="note" id="advPopMsg" hidden>The pop lines come from the songs in "My songs". Unlock them there with the song password first.</p>
       </div>
       <div class="row" id="advBookCtl" hidden>
         <label class="ctl" for="advBookSel">Exercise <select id="advBookSel"></select></label>
@@ -625,7 +637,7 @@ function unpackSong(r) {
   // compact pack format: notes as [t, d, m, L, a, meas]
   if (!r || !r.parts) return null;
   return {id:r.id || 'p' + Math.random().toString(36).slice(2), title:r.title, file:'song pack', fifths:r.fifths, minor:!!r.minor, tempo:r.tempo || 90, part:r.part || 0, pack:true, checks:r.checks || null, sections:r.sections || null, timeSig:r.timeSig || null,
-    parts:r.parts.map(p => ({name:p.name, notes:p.notes.map(n => Array.isArray(n) ? {t:n[0], d:n[1], m:n[2], L:n[3], a:n[4], meas:n[5], ly:''} : n)}))};
+    parts:r.parts.map(p => ({name:p.name, barStarts:p.barStarts || null, notes:p.notes.map(n => Array.isArray(n) ? {t:n[0], d:n[1], m:n[2], L:n[3], a:n[4], meas:n[5], ly:''} : n)}))};
 }
 function addSongs(list) {
   list.forEach(raw => {
@@ -1098,6 +1110,7 @@ function advTonicL(tonicPc, mode) { const {key} = modeKey(tonicPc, mode); return
 
 /* the melody generator: two phrases, first ends open (on sol or re), second closes on the tonic */
 function advGenerate() {
+  if ($('advStyle').value === 'pop') return advGeneratePop();
   const tonicPc = +$('advKey').value, mode = $('advMode').value, meter = $('advMeter').value, lvl = +$('advLvl').value, bars = +$('advLen').value, clef = $('advClef').value;
   const M = MODES[mode], R = RHY[meter], tL = advTonicL(tonicPc, mode), base = tonicBase(tonicPc, clef);
   const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -1136,21 +1149,23 @@ function advGenerate() {
 }
 
 /* book exercises (private builds and the locked pack only) */
+const REAL = {"exercises":[{"n":1,"title":"Twinkle, Twinkle, Little Star","composer":"French folk tune (Mozart variations)","lvl":1,"key":"C major","fifths":0,"minor":false,"time":"4/4","tempo":"Moderato 88","tempoText":"Moderato","dyn":"mf","notes":[["C4",1.0],["C4",1.0],["G4",1.0],["G4",1.0],["A4",1.0],["A4",1.0],["G4",2.0],["F4",1.0],["F4",1.0],["E4",1.0],["E4",1.0],["D4",1.0],["D4",1.0],["C4",2.0],["G4",1.0],["G4",1.0],["F4",1.0],["F4",1.0],["E4",1.0],["E4",1.0],["D4",2.0],["G4",1.0],["G4",1.0],["F4",1.0],["F4",1.0],["E4",1.0],["E4",1.0],["D4",2.0],["C4",1.0],["C4",1.0],["G4",1.0],["G4",1.0],["A4",1.0],["A4",1.0],["G4",2.0],["F4",1.0],["F4",1.0],["E4",1.0],["E4",1.0],["D4",1.0],["D4",1.0],["C4",2.0]],"bars":[0,4,7,11,14,18,21,25,28,32,35,39],"clef":"treble","dynamics":["mf"]},{"n":2,"title":"Frere Jacques","composer":"French folk song","lvl":1,"key":"F major","fifths":-1,"minor":false,"time":"4/4","tempo":"Allegretto 92","tempoText":"Allegretto","dyn":"mp","notes":[["F4",1.0],["G4",1.0],["A4",1.0],["F4",1.0],["F4",1.0],["G4",1.0],["A4",1.0],["F4",1.0],["A4",1.0],["Bb4",1.0],["C5",2.0],["A4",1.0],["Bb4",1.0],["C5",2.0],["C5",0.5],["D5",0.5],["C5",0.5],["Bb4",0.5],["A4",1.0],["F4",1.0],["C5",0.5],["D5",0.5],["C5",0.5],["Bb4",0.5],["A4",1.0],["F4",1.0],["F4",1.0],["C4",1.0],["F4",2.0],["F4",1.0],["C4",1.0],["F4",2.0]],"bars":[0,4,8,11,14,20,26,29],"clef":"treble","dynamics":["mp"]},{"n":3,"title":"Going Home (Largo, New World Symphony)","composer":"Antonin Dvorak, 1893","lvl":1,"key":"D major","fifths":2,"minor":false,"time":"4/4","tempo":"Largo 60","tempoText":"Largo","dyn":"p","notes":[["F#4",1.5],["A4",0.5],["A4",2.0],["F#4",1.5],["E4",0.5],["D4",2.0],["E4",1.0],["F#4",1.0],["A4",1.0],["F#4",1.0],["E4",4.0],["F#4",1.5],["A4",0.5],["A4",2.0],["F#4",1.5],["E4",0.5],["D4",2.0],["E4",1.0],["F#4",1.0],["E4",1.0],["D4",1.0],["D4",4.0]],"bars":[0,3,6,10,11,14,17,21],"clef":"treble","dynamics":["p"]},{"n":4,"title":"Ode to Joy (Symphony No. 9)","composer":"Ludwig van Beethoven, 1824","lvl":1,"key":"D major","fifths":2,"minor":false,"time":"4/4","tempo":"Allegro assai 100","tempoText":"Allegro assai","dyn":"f","notes":[["F#4",1.0],["F#4",1.0],["G4",1.0],["A4",1.0],["A4",1.0],["G4",1.0],["F#4",1.0],["E4",1.0],["D4",1.0],["D4",1.0],["E4",1.0],["F#4",1.0],["F#4",1.5],["E4",0.5],["E4",2.0],["F#4",1.0],["F#4",1.0],["G4",1.0],["A4",1.0],["A4",1.0],["G4",1.0],["F#4",1.0],["E4",1.0],["D4",1.0],["D4",1.0],["E4",1.0],["F#4",1.0],["E4",1.5],["D4",0.5],["D4",2.0],["E4",1.0],["E4",1.0],["F#4",1.0],["D4",1.0],["E4",1.0],["F#4",0.5],["G4",0.5],["F#4",1.0],["D4",1.0],["E4",1.0],["F#4",0.5],["G4",0.5],["F#4",1.0],["E4",1.0],["D4",1.0],["E4",1.0],["A3",2.0],["F#4",1.0],["F#4",1.0],["G4",1.0],["A4",1.0],["A4",1.0],["G4",1.0],["F#4",1.0],["E4",1.0],["D4",1.0],["D4",1.0],["E4",1.0],["F#4",1.0],["E4",1.5],["D4",0.5],["D4",2.0]],"bars":[0,4,8,12,15,19,23,27,30,34,39,44,47,51,55,59],"clef":"treble","dynamics":["f"]},{"n":5,"title":"Auld Lang Syne","composer":"Scottish folk tune","lvl":2,"key":"F major","fifths":-1,"minor":false,"time":"4/4","tempo":"Andante 76","tempoText":"Andante","dyn":"mp","notes":[["C4",1.0],["F4",1.5],["F4",0.5],["F4",1.0],["A4",1.0],["G4",1.5],["F4",0.5],["G4",1.0],["A4",0.5],["G4",0.5],["F4",1.5],["F4",0.5],["A4",1.0],["C5",1.0],["D5",3.0],["D5",1.0],["C5",1.5],["A4",0.5],["A4",1.0],["F4",1.0],["G4",1.5],["F4",0.5],["G4",1.0],["A4",0.5],["G4",0.5],["F4",1.5],["D4",0.5],["D4",1.0],["C4",1.0],["F4",3.0]],"bars":[0,1,5,10,14,16,20,25,29],"clef":"treble","dynamics":["mp"]},{"n":6,"title":"Minuet in G","composer":"Christian Petzold (Anna Magdalena Notebook), c. 1725","lvl":2,"key":"G major","fifths":1,"minor":false,"time":"3/4","tempo":"Allegretto 100","tempoText":"Allegretto","dyn":"mf","notes":[["D5",1.0],["G4",0.5],["A4",0.5],["B4",0.5],["C5",0.5],["D5",1.0],["G4",1.0],["G4",1.0],["E5",1.0],["C5",0.5],["D5",0.5],["E5",0.5],["F#5",0.5],["G5",1.0],["G4",1.0],["G4",1.0],["C5",1.0],["D5",0.5],["C5",0.5],["B4",0.5],["A4",0.5],["B4",1.0],["C5",0.5],["B4",0.5],["A4",0.5],["G4",0.5],["F#4",1.0],["G4",0.5],["A4",0.5],["B4",0.5],["G4",0.5],["A4",3.0],["D5",1.0],["G4",0.5],["A4",0.5],["B4",0.5],["C5",0.5],["D5",1.0],["G4",1.0],["G4",1.0],["E5",1.0],["C5",0.5],["D5",0.5],["E5",0.5],["F#5",0.5],["G5",1.0],["G4",1.0],["G4",1.0],["C5",1.0],["D5",0.5],["C5",0.5],["B4",0.5],["A4",0.5],["B4",1.0],["C5",0.5],["B4",0.5],["A4",0.5],["G4",0.5],["A4",1.0],["B4",0.5],["A4",0.5],["G4",0.5],["F#4",0.5],["G4",3.0]],"bars":[0,5,8,13,16,21,26,31,32,37,40,45,48,53,58,63],"clef":"treble","dynamics":["mf"]},{"n":7,"title":"Greensleeves","composer":"English folk tune, 16th century","lvl":3,"key":"A minor","fifths":0,"minor":true,"mode_note":"melodic minor (raised 6th and 7th: F# and G#)","time":"6/8","tempo":"Andante 66","tempoText":"Andante","dyn":"p","notes":[["A4",0.5],["C5",1.0],["D5",0.5],["E5",0.75],["F5",0.25],["E5",0.5],["D5",1.0],["B4",0.5],["G4",0.75],["A4",0.25],["B4",0.5],["C5",1.0],["A4",0.5],["A4",0.75],["G#4",0.25],["A4",0.5],["B4",1.0],["G#4",0.5],["E4",1.0],["A4",0.5],["C5",1.0],["D5",0.5],["E5",0.75],["F5",0.25],["E5",0.5],["D5",1.0],["B4",0.5],["G4",0.75],["A4",0.25],["B4",0.5],["C5",0.75],["B4",0.25],["A4",0.5],["G#4",0.75],["F#4",0.25],["G#4",0.5],["A4",2.5]],"bars":[0,1,6,11,16,20,25,30,36],"clef":"treble","dynamics":["p"]},{"n":8,"title":"Korobeiniki (The Peddlers)","composer":"Russian folk song","lvl":3,"key":"E minor","fifths":1,"minor":true,"mode_note":"harmonic minor","time":"4/4","tempo":"Allegro 120","tempoText":"Allegro","dyn":"f","notes":[["B4",1.0],["F#4",0.5],["G4",0.5],["A4",1.0],["G4",0.5],["F#4",0.5],["E4",1.0],["E4",0.5],["G4",0.5],["B4",1.0],["A4",0.5],["G4",0.5],["F#4",1.5],["G4",0.5],["A4",1.0],["B4",1.0],["G4",1.0],["E4",1.0],["E4",2.0],["A4",1.5],["C5",0.5],["E5",1.0],["D5",0.5],["C5",0.5],["B4",1.5],["G4",0.5],["B4",1.0],["A4",0.5],["G4",0.5],["F#4",1.0],["F#4",0.5],["G4",0.5],["A4",1.0],["B4",1.0],["G4",1.0],["E4",1.0],["E4",2.0]],"bars":[0,6,12,16,19,24,29,34],"clef":"treble","dynamics":["f"]}]};
 function loadBook() {
   if (ADV.book) return ADV.book;
   let b = BUILTIN && BUILTIN.book ? BUILTIN.book : null;
   if (!b) { try { b = JSON.parse(localStorage.getItem('solfege-book') || 'null'); } catch (e) {} }
   return ADV.book = b && b.exercises ? b : null;
 }
-function bookExercise(i) {
-  const e = loadBook().exercises[i], [bn, bd] = e.time.split('/').map(Number), bar = bn * 4 / bd;
+function bookExercise(i) { return exFrom(loadBook().exercises[i]); }
+function exFrom(e) {
+  const [bn, bd] = e.time.split('/').map(Number), bar = bn * 4 / bd;
   const items = []; let t = 0;
   e.notes.forEach(([p, d]) => { if (p !== 'rest') { const r = parsePitchName(p); items.push({t, d, m:r.m, L:r.L, a:r.a}); } else items.push({t, d, rest:true}); t += d; });
   const barStarts = (e.bars || []).map(k => { let s = 0; for (let j = 0; j < k; j++) s += e.notes[j][1]; return s; });
   const f = e.fifths ?? 0, key = tonicFromFifths(f), doPc = key.pc, tonicPc = e.minor ? (doPc + 9) % 12 : doPc;
   const mn = (e.mode_note || '').toLowerCase(), mode = (e.minor ? (mn.includes('harmonic') ? 'harMin' : mn.includes('melodic') ? 'melMin' : 'natMin') : (mn.includes('harmonic') ? 'harMaj' : mn.includes('melodic') ? 'melMaj' : 'natMaj'));
   const bpm = +((e.tempo || '').match(/\d+/) || [80])[0];
-  return {title:`No. ${e.n} \u{B7} ${e.composer || ''}`, sub:[e.key, e.time, e.tempo].filter(Boolean).join(' \u{B7} ') + (e.incomplete ? ' \u{B7} continues on a page we don\u{2019}t have' : ''),
+  return {title:e.title ? `${e.title} \u{B7} ${e.composer || ''}` : `No. ${e.n} \u{B7} ${e.composer || ''}`, sub:[e.key, e.time, e.tempo].filter(Boolean).join(' \u{B7} ') + (e.incomplete ? ' \u{B7} continues on a page we don\u{2019}t have' : ''),
     clef:e.clef || 'treble', fifths:f, key, mode, tonicPc, time:e.time, bar, tempo:bpm, tempoText:(e.tempo || '').replace(/[\d=\u{2669}\s]+$/u, '').trim(), dyn:(e.dynamics || [])[0] || '',
     items, bars:barStarts.length ? barStarts : null};
 }
@@ -1175,7 +1190,7 @@ async function renderScore(ex) {
   const W = Math.max(320, box.clientWidth || 700);
   // bars
   const barStarts = ex.bars || (() => { const b = []; const end = ex.items.reduce((s, n) => Math.max(s, n.t + n.d), 0); for (let x = 0; x < end - 1e-6; x += ex.bar) b.push(x); return b; })();
-  const nb = barStarts.length, perRow = W < 520 ? 2 : W < 860 ? 3 : 4, rows = Math.ceil(nb / perRow), rowH = 118;
+  const nb = barStarts.length, perRow = Math.max(1, Math.min(nb, W < 520 ? 2 : W < 860 ? 3 : 4)), rows = Math.ceil(nb / perRow), rowH = 118;
   const rend = new VF.Renderer(box, VF.Renderer.Backends.SVG); rend.resize(W, rows * rowH + 40); const ctx = rend.getContext();
   const [bn, bd] = ex.time.split('/').map(Number), spec = VF_KEY[ex.fifths] || 'C';
   ADV.staveNotes = []; let eng = 0;
@@ -1284,10 +1299,72 @@ function advPrep() {
   };
   setTimeout(() => go(0), 3900);
 }
+
+/* pop lines: any sung line from the songs in "My songs", as notation */
+function popSongs() { return LIB.filter(s => s.sections && s.parts[s.part || 0].barStarts); }
+function popLines(song) {
+  const out = [], seen = {};
+  song.sections.forEach(sec => { if (sec.spoken) return; sec.lines.forEach((ln, k) => { const key = ln.join('-'); if (seen[key]) return; seen[key] = 1; out.push({sec:sec.name, k:k + 1, ln}); }); });
+  return out;
+}
+function popExercise(song, L) {
+  const p = song.parts[song.part || 0], bs = p.barStarts, ns = p.notes.slice(L.ln[0], L.ln[1] + 1);
+  const a = ns[0].meas, z = ns[ns.length - 1].meas, t0 = bs[a - 1] ?? ns[0].t, tEnd = bs[z] ?? (ns[ns.length - 1].t + ns[ns.length - 1].d);
+  const items = []; let t = t0;
+  ns.forEach(n => { if (n.t - t > .01) items.push({t:t - t0, d:n.t - t, rest:true}); const d = Math.min(n.d, tEnd - n.t); items.push({t:n.t - t0, d, m:n.m, L:n.L, a:n.a}); t = n.t + d; });
+  if (tEnd - t > .01) items.push({t:t - t0, d:tEnd - t, rest:true});
+  const ts = song.timeSig || '4/4', [bn, bd] = ts.split('/').map(Number), f = song.fifths || 0, key = tonicFromFifths(f);
+  return {title:`${song.title} \u{B7} ${L.sec} line ${L.k}`, sub:`${ts} \u{B7} bars ${a}\u{2013}${z} \u{B7} \u{2669} = ${song.tempo}`, clef:'treble', fifths:f, key, mode:song.minor ? 'natMin' : 'natMaj',
+    tonicPc:song.minor ? (key.pc + 9) % 12 : key.pc, time:ts, bar:bn * 4 / bd, tempo:song.tempo, tempoText:'', dyn:'', items, bars:bs.slice(a - 1, z).map(x => x - t0)};
+}
+function fillPop() {
+  const songs = popSongs();
+  $('advPopMsg').hidden = !!songs.length; $('advPopSong').parentElement.hidden = $('advPopLine').parentElement.hidden = !songs.length;
+  if (!songs.length) { ADV.ex = null; $('advScore').innerHTML = ''; $('advChips').innerHTML = ''; $('advTitle').textContent = 'Pop lines'; $('advSub').textContent = ''; return; }
+  const cur = $('advPopSong').value;
+  $('advPopSong').innerHTML = songs.slice().sort((x, y) => x.title.localeCompare(y.title)).map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
+  if (cur && songs.some(s => s.id === cur)) $('advPopSong').value = cur;
+  fillPopLines();
+}
+function fillPopLines() {
+  const song = LIB.find(s => s.id === $('advPopSong').value); if (!song) return;
+  const ls = popLines(song);
+  $('advPopLine').innerHTML = ls.map((l, i) => `<option value="${i}">${esc(l.sec)} \u{B7} line ${l.k}</option>`).join('');
+  showPop();
+}
+function showPop() { const song = LIB.find(s => s.id === $('advPopSong').value); if (!song) return; stopAll(); ADV.ex = popExercise(song, popLines(song)[+$('advPopLine').value || 0]); advShow(); }
+
+/* pop-style generator: a 2-bar hook, repeated, a contrasting lift, then the hook coming home */
+const POPR = {1:[[1,1,1,1],[1,1,2],[.5,.5,1,2],[1.5,.5,2]], 2:[[.5,1,.5,1,1],[1,.5,1,.5,1],[1.5,1.5,1],[.5,.5,.5,1,1.5]], 3:[[.75,.75,.5,1,1],[.5,.5,.5,.5,1,1],[.25,.25,.5,1,.5,1.5],[1.5,1,.5,1]]};
+function advGeneratePop() {
+  const tonicPc = +$('advKey').value, mode = $('advMode').value, lvl = +$('advLvl').value, bars = Math.max(4, +$('advLen').value), clef = $('advClef').value;
+  const pm = MODES[mode].minor ? 'natMin' : 'natMaj', M = MODES[pm], tL = advTonicL(tonicPc, pm), base = tonicBase(tonicPc, clef), pick = a => a[Math.floor(Math.random() * a.length)];
+  const penta = M.minor ? [0, 2, 3, 4, 6] : [0, 1, 2, 4, 5];            // la do re mi sol / do re mi sol la
+  const pool = [...POPR[1], ...(lvl >= 2 ? POPR[2] : []), ...(lvl >= 3 ? POPR[3] : [])];
+  const near = (d, set) => { let best = d, bd = 99; for (let x = d - 3; x <= d + 3; x++) if (set.includes(((x % 7) + 7) % 7) && Math.abs(x - d) < bd) { bd = Math.abs(x - d); best = x; } return best; };
+  const motif = (start, lift) => {                                       // 2 bars of (duration, degree)
+    const r = [pick(pool), pick(pool)], out = []; let d = start;
+    r.forEach(bar => bar.forEach((dur, k) => { const rr = Math.random(); if (out.length) d = rr < .3 ? d : near(d + pick([-1, 1, -2, 2, 1]) + (lift && rr > .8 ? 1 : 0), penta); d = Math.max(-2, Math.min(8, d)); out.push([dur, d]); }));
+    return out;
+  };
+  const A = motif(pick([0, 2, 4])), B = motif(4, true), seq = [];
+  const withEnd = (m, endDeg) => m.map((x, i) => i === m.length - 1 ? [x[0], endDeg] : x);
+  const plan = bars >= 8 ? [A, withEnd(A, 4), B, withEnd(A, 0)] : [withEnd(A, 4), withEnd(A, 0)];
+  for (let i = 0; i < bars / 2 - plan.length && bars > 8; i++) plan.splice(2, 0, i % 2 ? withEnd(B, 1) : B);
+  let t = 0; const items = [];
+  plan.forEach(m => m.forEach(([d, deg], i) => { items.push(Object.assign({t, d, deg}, degNote(base, tL, tonicPc, M.up, deg))); t += d; }));
+  const {fifths, key} = modeKey(tonicPc, pm), tempo = Math.max(88, +$('advTempo').value);
+  ADV.ex = {title:`Pop hook \u{B7} ${advKeyName(tonicPc)} ${M.minor ? 'minor' : 'major'}`, clef, fifths, key, mode:pm, tonicPc, time:'4/4', bar:4, tempo, tempoText:'Pop groove', dyn:'mf',
+    items:items.map(n => ({t:n.t, d:n.d, m:n.m, L:n.L, a:n.a})), bars:Array.from({length:t / 4}, (_, i) => i * 4)};
+  ADV.ex.sub = `4/4 \u{B7} pop groove \u{2669} = ${tempo} \u{B7} syncopated: feel the off-beats`;
+  advShow();
+}
 function setAdvView(v) {
   stopAll(); ADV.view = v;
-  ['gen', 'book'].forEach(k => { $('adv-' + k).setAttribute('aria-pressed', k === v); });
-  $('advGenCtl').hidden = v !== 'gen'; $('advBookCtl').hidden = v !== 'book';
+  ['gen', 'real', 'pop', 'book'].forEach(k => { $('adv-' + k).setAttribute('aria-pressed', k === v); });
+  $('advGenCtl').hidden = v !== 'gen'; $('advBookCtl').hidden = v !== 'book'; $('advRealCtl').hidden = v !== 'real'; $('advPopCtl').hidden = v !== 'pop';
+  if (v === 'real') { ADV.ex = exFrom(REAL.exercises[+$('advRealSel').value || 0]); advShow(); return; }
+  if (v === 'pop') { fillPop(); return; }
   if (v === 'book') { const b = loadBook(); if (!b) { $('advBookMsg').hidden = false; $('advBookSel').parentElement.hidden = true; ADV.ex = null; $('advScore').innerHTML = ''; $('advChips').innerHTML = ''; $('advTitle').textContent = 'Book exercises'; $('advSub').textContent = ''; return; }
     $('advBookMsg').hidden = true; $('advBookSel').parentElement.hidden = false;
     $('advBookSel').innerHTML = b.exercises.map((e, i) => `<option value="${i}">No. ${e.n} \u{B7} ${esc(e.composer || '')} \u{B7} ${esc(e.key || '')}</option>`).join('');
@@ -1298,9 +1375,12 @@ function setAdvView(v) {
   $('advKey').innerHTML = [0, 7, 2, 9, 4, 11, 5, 10, 3, 8, 1, 6].map(pc => `<option value="${pc}">${advKeyName(pc)}</option>`).join('');
   $('advKey').value = '2';
   $('advMode').innerHTML = Object.entries(MODES).map(([k, m]) => `<option value="${k}">${m.name}</option>`).join(''); $('advMode').value = 'harMin';
-  ['advKey', 'advMode', 'advMeter', 'advLvl', 'advLen', 'advClef', 'advTempo'].forEach(id => $(id).onchange = () => { stopAll(); advGenerate(); });
+  ['advStyle', 'advKey', 'advMode', 'advMeter', 'advLvl', 'advLen', 'advClef', 'advTempo'].forEach(id => $(id).onchange = () => { stopAll(); advGenerate(); });
   $('advNew').onclick = () => { stopAll(); advGenerate(); };
-  $('adv-gen').onclick = () => setAdvView('gen'); $('adv-book').onclick = () => setAdvView('book');
+  $('adv-gen').onclick = () => setAdvView('gen'); $('adv-real').onclick = () => setAdvView('real'); $('adv-pop').onclick = () => setAdvView('pop');
+  $('advRealSel').innerHTML = REAL.exercises.map((e, i) => `<option value="${i}">Level ${e.lvl} \u{B7} ${esc(e.title)}</option>`).join('');
+  $('advRealSel').onchange = e => { stopAll(); ADV.ex = exFrom(REAL.exercises[+e.target.value]); advShow(); };
+  $('advPopSong').onchange = () => fillPopLines(); $('advPopLine').onchange = () => showPop(); $('adv-book').onclick = () => setAdvView('book');
   $('advBookSel').onchange = e => { stopAll(); ADV.ex = bookExercise(+e.target.value); advShow(); };
   $('advPrep').onclick = advPrep;
   $('advStart').onclick = () => { const n = advNotes()[0]; if (!n) return; ensureAudio(); const k = ADV.ex.key; piano(tonicBase(ADV.ex.tonicPc, 'treble'), ac.currentTime + .05, 1, .4, master); piano(n.m, ac.currentTime + 1.2, 1.2, .55, master); $('advStatus').textContent = 'The tonic, then your first note.'; };
