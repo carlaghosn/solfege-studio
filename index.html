@@ -99,6 +99,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .deckBtns{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:10px}
 .deck .status{margin-top:6px;min-height:22px}
 .manage{margin-top:10px}.manage summary{cursor:pointer;font-weight:800;font-size:14px;padding:4px 0}
+.keys{margin:0;font-size:12px}@media (hover:none){.keys{display:none}}
 .allp{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .allp summary{cursor:pointer;font-weight:800}
 @media (max-width:600px){.jump{width:100%}.jump select{flex:1;max-width:none}.deckBtns .go{flex:1 1 100%}}
@@ -214,6 +215,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
             <label class="chk"><input type="checkbox" id="loopChk"> Loop</label>
           </div>
           <div class="status" id="sStatus"></div>
+          <p class="keys note">Keys: Space = play &#xB7; &#x2190; &#x2192; = phrase &#xB7; E = play, then my turn &#xB7; T = test me</p>
         </div>
         <div class="chips" id="sChips"></div>
         <div class="res" id="sRes" hidden><div class="top"><div class="grade" id="rGrade"></div><div><b id="rScore"></b><div class="sub" id="rSub"></div></div></div></div>
@@ -687,6 +689,12 @@ function renderPhrase() {
   }).join('');
   $('sRes').hidden = true; drawRoll($('roll'), ph, k, -1);
 }
+document.addEventListener('keydown', e => {
+  if ($('songBody').hidden || $('songsView').hidden || /INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key, click = id => { e.preventDefault(); if (!$(id).disabled) $(id).click(); };
+  if (k === ' ') click('playP'); else if (k === 'ArrowRight') click('nextP'); else if (k === 'ArrowLeft') click('prevP');
+  else if (k === 't' || k === 'T') click('testP'); else if (k === 'e' || k === 'E') click('echoP');
+});
 $('secJump').onchange = e => { stopAll(); S.pi = +e.target.value; renderPhrase(); };
 $('pmap').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopAll(); S.pi = +b.dataset.i; renderPhrase(); });
 $('prevP').onclick = () => { stopAll(); S.pi = Math.max(0, S.pi - 1); renderPhrase(); };
