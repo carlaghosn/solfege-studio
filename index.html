@@ -145,6 +145,27 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .stable th{text-align:left;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
 .stable td{padding:7px 8px;border-bottom:1px solid var(--line)}
 .tablewrap{overflow-x:auto}
+.wmPick{background:linear-gradient(135deg,#1e2a4a,#3b2a5a);color:#fff;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wmPick small{opacity:.8;font-weight:700;letter-spacing:.04em}.wmPick b{font:800 24px var(--display)}.wmPick span{opacity:.85;font-size:13.5px}.wmPick .go{align-self:flex-start;margin-top:6px}
+.wmAll{margin-top:12px}.wmAll summary{cursor:pointer;font-weight:800}
+.wmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:8px}
+.wmCard{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:9px 11px;cursor:pointer;color:var(--ink)}
+.wmCard b{display:block;font-size:14px}.wmCard small{color:var(--muted);font-size:11.5px}.wmCard.today{outline:2px solid var(--accent)}
+.wmFlag{color:#b26b00}
+.wmSteps{margin:10px 0 0;padding-left:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.wmSteps li{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;background:var(--surface-2)}
+.wmSteps li.cur{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wmSteps em{font-style:normal;font-weight:800}.wmSteps em.A{color:#0c7a3f}.wmSteps em.B{color:#5c7d12}.wmSteps em.C{color:#9a6b00}.wmSteps em.D{color:#b3261e}
+.wmSteps li.cur em{color:#fff}
+.wmNow{margin-top:8px}.wmNow b{font:800 17px var(--display)}.wmNow p{margin:2px 0 0;font-size:14px}
+.wmSum{display:flex;gap:14px;align-items:center;margin-top:10px}.wmSum p{margin:4px 0}
+.reel{position:fixed;inset:0;z-index:50;background:#0d0d12;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.reelIn{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:640px}
+.reelTitle{font:800 clamp(34px,8vw,64px)/1.05 var(--display)}.reelCut{font-size:clamp(16px,3.6vw,22px);opacity:.85}.reelKey{font-size:15px;opacity:.7}
+.reelRing{width:min(52vw,260px);height:auto;margin:10px 0}.reelRing circle{fill:none;stroke-width:10}.reelRing .bg{stroke:#2a2a36}
+.reelRing .fg{stroke:#ffcc4d;stroke-linecap:round;stroke-dasharray:565.5;transform:rotate(-90deg);transform-origin:100px 100px;transition:stroke-dashoffset .1s linear}
+.reelRing text{fill:#fff;font:800 44px var(--display)}
+.reelBtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.reelX{position:absolute;top:14px;right:14px;background:none;border:0;color:#fff;font-size:26px;cursor:pointer}
 .advT{font:800 18px var(--display);margin:14px 0 0}
 .score{background:#fff;border-radius:12px;margin-top:8px;padding:4px 0;overflow-x:auto;min-height:40px}
 .score svg{display:block;max-width:100%}
@@ -180,6 +201,7 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
     <button class="tab" role="tab" id="t-songs" aria-selected="true">My songs</button>
     <button class="tab" role="tab" id="t-sight" aria-selected="false">Sight-singing</button>
     <button class="tab" role="tab" id="t-int" aria-selected="false">Intervals</button>
+    <button class="tab" role="tab" id="t-warm" aria-selected="false">Song warm-ups</button>
     <button class="tab" role="tab" id="t-adv" aria-selected="false">Advanced</button>
     <button class="tab" role="tab" id="t-basics" aria-selected="false">Solf&#xE8;ge basics</button>
     <button class="tab" role="tab" id="t-prog" aria-selected="false">Progress report</button>
@@ -243,6 +265,50 @@ body.songOpen .roll{height:clamp(130px, calc(100vh - 545px), 260px)}
         <details class="allp" id="allP"><summary>All phrases <span class="note">(colors show test grades)</span></summary><div class="pmap" id="pmap" aria-label="All phrases"></div></details>
       </div>
     </main>
+  </div>
+
+  <!-- SONG WARM-UPS -->
+  <div class="grid one" id="warmView" hidden>
+    <main class="card">
+      <h2>Song warm-ups</h2>
+      <p class="hint">One song a day, about 3 minutes, no coach needed. Each routine is built from the song&#x2019;s key, chords and range: find home, the scale, the chords, a range stretch and the song&#x2019;s style. Every step: listen, then your turn, graded. Then film your reel.</p>
+      <div id="wmToday"></div>
+      <details class="wmAll"><summary>All 20 songs</summary><div class="wmGrid" id="wmGrid"></div></details>
+      <div id="wmSong" hidden>
+        <h3 class="advT" id="wmTitle"></h3>
+        <p class="note" id="wmInfo"></p>
+        <div class="row">
+          <label class="ctl" for="wmKey">Key <select id="wmKey"></select></label>
+          <label class="ctl" for="wmSpd">Speed <select id="wmSpd"><option value="0.85">Slower</option><option value="1" selected>Normal</option><option value="1.1">Faster</option></select></label>
+          <button class="btn" id="wmReelBtn">&#x1F3AC; Reel mode</button>
+        </div>
+        <p class="note" id="wmPlayAlong"></p>
+        <ol class="wmSteps" id="wmSteps"></ol>
+        <div class="deck advDeck">
+          <div class="deckBtns">
+            <button class="go" id="wmGo">&#x25B6; Start the routine</button>
+            <button class="btn" id="wmAgain">&#x27F2; Repeat this step</button>
+            <button class="btn" id="wmSkip">Skip step &#x2192;</button>
+          </div>
+          <div class="wmNow"><b id="wmStepName"></b><p id="wmStepTip"></p></div>
+          <div class="status" id="wmStatus"></div>
+        </div>
+        <div class="res wmSum" id="wmSummary" hidden></div>
+        <div class="chips" id="wmChips"></div>
+        <canvas class="roll" id="wmRoll" width="1200" height="440" style="height:200px"></canvas>
+        <p class="note">Voice care: warm-ups should feel easy. If anything scratches or feels tight, sing softer, skip that step, sip water. Strong, never painful.</p>
+      </div>
+    </main>
+  </div>
+  <div class="reel" id="wmReel" hidden>
+    <button class="reelX" id="wrClose" aria-label="Close reel mode">&#x2715;</button>
+    <div class="reelIn">
+      <div class="reelTitle" id="wrTitle"></div>
+      <div class="reelCut" id="wrCut"></div>
+      <div class="reelKey" id="wrKey"></div>
+      <svg class="reelRing" viewBox="0 0 200 200"><circle cx="100" cy="100" r="90" class="bg"/><circle cx="100" cy="100" r="90" id="wrRing" class="fg"/><text x="100" y="112" id="wrNum" text-anchor="middle"></text></svg>
+      <div class="reelBtns"><button class="btn" id="wrPitch">&#x1F514; Starting pitch</button><button class="go" id="wrStart">&#x23FA; 3-2-1, then 60 seconds</button></div>
+    </div>
   </div>
 
   <!-- ADVANCED -->
@@ -882,7 +948,7 @@ function stopAll(keepPrep) {
 // run: notes (with .t .d .m in beats), opts: {mode:'play'|'echo'|'test', bpm, tr, where:'song'|'sight', onDone}
 async function run(notes, opts) {
   stopAll(); ensureAudio(); if (ac.state !== 'running') { try { await ac.resume(); } catch (e) {} }
-  if (opts.mode === 'test') { const ok = await micOn(); if (!ok) { opts.status('The test needs the microphone. Allow it (on iPad: Settings \u{2192} Safari \u{2192} Microphone) and try again.'); return; } }
+  if (opts.mode === 'test') { const ok = await micOn(); if (!ok) { opts.noMic = true; opts.status('The test needs the microphone. Allow it (on iPad: Settings \u{2192} Safari \u{2192} Microphone) and try again.'); return; } }
   const spb = 60 / opts.bpm, t0n = notes[0].t, evs = []; let t = .15;
   runGain = ac.createGain(); runGain.connect(master);
   const beats = Math.max(...notes.map(n => n.t + n.d)) - t0n;
@@ -892,6 +958,7 @@ async function run(notes, opts) {
     for (let i = 0; i < 2; i++) { click(T0 + t + i * spb, i === 0, runGain); evs.push({t:t + i * spb, d:spb, kind:'count', i}); } t += spb * 2;
   } else { for (let i = 0; i < 2; i++) { click(T0 + t + i * spb, i === 0, runGain); evs.push({t:t + i * spb, d:spb, kind:'count', i}); } t += spb * 2; }
   const addPass = (kind) => {
+    if (opts.onPass) opts.onPass(kind, T0 + t);
     notes.forEach((n, j) => { const nt = t + (n.t - t0n) * spb, nd = n.d * spb; evs.push({t:nt, d:nd, kind, j, m:n.m + opts.tr}); if (kind === 'play') piano(n.m + opts.tr, T0 + nt, nd * .95, .55, runGain); });
     if (kind !== 'play') for (let b = 0; b < Math.ceil(beats); b++) click(T0 + t + b * spb, false, runGain);
     t += (beats + 1) * spb;
@@ -1392,13 +1459,189 @@ function setAdvView(v) {
   let rt = 0; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!$('advView').hidden && ADV.ex) renderScore(ADV.ex); }, 250); });
 })();
 
+/* ---------- song warm-ups: a guided 2-3 minute routine per song, built from its key, chords and range ---------- */
+const WARM = [{"id":"lana01","n":1,"title":"Summertime Sadness","album":"Born to Die","year":2012,"instr":"Either (guitar strum or piano)","reel":"Pre-chorus into chorus 1","flag":"","confidence":"high","tonic":1,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"C# minor","bpm":112,"time":"4/4","practice":72,"loop":[{"sym":"A","root":9,"suf":"","q":"maj"},{"sym":"C#m","root":1,"suf":"m","q":"min"},{"sym":"B","root":11,"suf":"","q":"maj"},{"sym":"F#m","root":6,"suf":"m","q":"min"}],"loopName":"chorus","low":49,"high":73,"suggestT":4,"drills":["low","flip","legato"],"iv":[{"deg":7,"dir":1}],"style":["low, dark chest-voice verses near the bottom of the range","lifted, airy chorus with light head-voice colour","long legato phrases over a steady pulse","slow vibrato on sustained phrase ends"]},{"id":"lana02","n":2,"title":"Young and Beautiful","album":"The Great Gatsby: Music from Baz Luhrmann's Film","year":2013,"instr":"Piano","reel":"Chorus 1","flag":"","confidence":"high","tonic":11,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"B minor","bpm":115,"time":"4/4","practice":72,"loop":[{"sym":"G","root":7,"suf":"","q":"maj"},{"sym":"A","root":9,"suf":"","q":"maj"},{"sym":"Bm","root":11,"suf":"m","q":"min"},{"sym":"D","root":2,"suf":"","q":"maj"}],"loopName":"chorus","low":50,"high":69,"suggestT":5,"drills":["low","legato","vib"],"iv":[],"style":["slow, half-time orchestral ballad feel (pulse feels ~58)","low, intimate chest voice in verses","sustained legato lines over strings","gentle swells and slow vibrato on long notes"]},{"id":"lana03","n":3,"title":"Say Yes to Heaven","album":"Say Yes to Heaven (single; Ultraviolence-era outtake)","year":2023,"instr":"Either","reel":"Chorus 1","flag":"","confidence":"high","tonic":6,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"F# minor","bpm":100,"time":"4/4","practice":100,"loop":[{"sym":"Dmaj7","root":2,"suf":"maj7","q":"maj"},{"sym":"E6add11","root":4,"suf":"6add11","q":"maj"},{"sym":"F#m","root":6,"suf":"m","q":"min"}],"loopName":"chorus","low":54,"high":73,"suggestT":1,"drills":["low","flip","vib"],"iv":[{"deg":4,"dir":1}],"style":["dreamy, soft-focus head-voice-leaning delivery","light, breathy onsets","floating falsetto-like chorus tones","gentle, slow vibrato"]},{"id":"lana04","n":4,"title":"Video Games","album":"Born to Die","year":2011,"instr":"Piano","reel":"Second half of verse 1 into chorus 1","flag":"","confidence":"high","tonic":6,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"F# minor","bpm":122,"time":"4/4","practice":72,"loop":[{"sym":"F#m","root":6,"suf":"m","q":"min"},{"sym":"A","root":9,"suf":"","q":"maj"},{"sym":"C#m","root":1,"suf":"m","q":"min"},{"sym":"D","root":2,"suf":"","q":"maj"}],"loopName":"verse","low":52,"high":69,"suggestT":3,"drills":["low","fall","vib"],"iv":[{"deg":2,"dir":1}],"style":["very slow, spacious ballad feel (felt at ~61)","low, smoky chest voice","sparing vibrato, straight tone that blooms at the ends","soft glides between notes"]},{"id":"lana05","n":5,"title":"Born to Die","album":"Born to Die","year":2011,"instr":"Piano","reel":"Chorus 1","flag":"Tempo differs between sources (75-98); the warm-up uses a comfortable pace.","confidence":"medium","tonic":4,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"E minor","bpm":86,"time":"4/4","practice":86,"loop":[{"sym":"C","root":0,"suf":"","q":"maj"},{"sym":"Em","root":4,"suf":"m","q":"min"},{"sym":"D","root":2,"suf":"","q":"maj"}],"loopName":"chorus","low":52,"high":69,"suggestT":3,"drills":["low","flip","legato"],"iv":[],"style":["low, sultry chest voice","legato phrases over hip-hop drums and strings","occasional light head-voice lift","slow vibrato on held notes"]},{"id":"lana06","n":6,"title":"Doin' Time","album":"Norman F. Rockwell!","year":2019,"instr":"Guitar","reel":"Chorus into the start of verse 2","flag":"","confidence":"high","tonic":7,"mode":"dorian","scale":[0,2,3,5,7,9,10],"doShift":-2,"letShift":1,"keyName":"G dorian","bpm":145,"time":"2/2","practice":72,"loop":[{"sym":"Gm","root":7,"suf":"m","q":"min"},{"sym":"C7","root":0,"suf":"7","q":"maj"}],"loopName":"verse","low":53,"high":74,"suggestT":2,"drills":["low","flip","fall"],"iv":[{"deg":5,"dir":1}],"style":["laid-back, behind-the-beat reggae-pop phrasing","relaxed chest voice with breathy tone","light head-voice lifts in the chorus","conversational, speech-like rhythms"]},{"id":"lana07","n":7,"title":"Brooklyn Baby","album":"Ultraviolence","year":2014,"instr":"Guitar","reel":"Chorus 1","flag":"Sources disagree on the key name; the chords (Db, Ab, Gb, Fm) all agree.","confidence":"medium","tonic":8,"mode":"mixolydian","scale":[0,2,4,5,7,9,10],"doShift":5,"letShift":4,"keyName":"Ab mixolydian","bpm":108,"time":"4/4","practice":100,"loop":[{"sym":"Ab","root":8,"suf":"","q":"maj"},{"sym":"Fm","root":5,"suf":"m","q":"min"},{"sym":"Db","root":1,"suf":"","q":"maj"},{"sym":"Gb","root":6,"suf":"","q":"maj"}],"loopName":"verse","low":53,"high":75,"suggestT":2,"drills":["low","flip","vib"],"iv":[],"style":["soft, dreamy head-voice-leaning chorus","low, conversational chest verses","light falsetto-like upper notes","slow vibrato and airy releases"]},{"id":"lana08","n":8,"title":"West Coast","album":"Ultraviolence","year":2014,"instr":"Guitar","reel":"Verse 2 into the slowed-down chorus (the tempo drop)","flag":"","confidence":"high","tonic":6,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"F# minor","bpm":123,"time":"4/4","practice":72,"loop":[{"sym":"F#m","root":6,"suf":"m","q":"min"},{"sym":"E","root":4,"suf":"","q":"maj"},{"sym":"D","root":2,"suf":"","q":"maj"}],"loopName":"verse","low":52,"high":73,"suggestT":3,"drills":["low","flip","fall"],"iv":[],"style":["low, husky chest-voice verses","chorus slows (~100 or slower) into a floating, sultry half-time feel","breathy head-voice colour in the chorus","slides and scoops into notes"]},{"id":"lana09","n":9,"title":"Cinnamon Girl","album":"Norman F. Rockwell!","year":2019,"instr":"Piano","reel":"Pre-chorus into chorus 1","flag":"Vocal range is an estimate (no published vocal edition).","confidence":"medium","tonic":6,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"F# minor","bpm":67,"time":"4/4","practice":72,"loop":[{"sym":"D","root":2,"suf":"","q":"maj"},{"sym":"F#m","root":6,"suf":"m","q":"min"},{"sym":"E","root":4,"suf":"","q":"maj"},{"sym":"Bm","root":11,"suf":"m","q":"min"}],"loopName":"chorus","low":52,"high":73,"suggestT":3,"drills":["flip","vib","legato"],"iv":[{"deg":3,"dir":-1}],"style":["soft, intimate mid-register delivery","airy head voice on upper phrases","piano-led and spacious with gentle dynamics","light vibrato"]},{"id":"lana10","n":10,"title":"Radio","album":"Born to Die","year":2012,"instr":"Guitar","reel":"Pre-chorus into chorus 1","flag":"","confidence":"high","tonic":2,"mode":"major","scale":[0,2,4,5,7,9,11],"doShift":0,"letShift":0,"keyName":"D major","bpm":75,"time":"4/4","practice":75,"loop":[{"sym":"G","root":7,"suf":"","q":"maj"},{"sym":"D","root":2,"suf":"","q":"maj"},{"sym":"A","root":9,"suf":"","q":"maj"},{"sym":"Em","root":4,"suf":"m","q":"min"}],"loopName":"chorus","low":50,"high":69,"suggestT":5,"drills":["low","flip","legato"],"iv":[{"deg":7,"dir":1}],"style":["bright, sweeter chest voice than most Born to Die tracks","light head-voice touches","smooth legato chorus","soft vibrato on sustained notes"]},{"id":"lana11","n":11,"title":"Blue Jeans","album":"Born to Die","year":2012,"instr":"Guitar","reel":"Chorus 1","flag":"","confidence":"high","tonic":5,"mode":"dorian","scale":[0,2,3,5,7,9,10],"doShift":-2,"letShift":1,"keyName":"F dorian","bpm":118,"time":"4/4","practice":72,"loop":[{"sym":"Fm","root":5,"suf":"m","q":"min"},{"sym":"Eb","root":3,"suf":"","q":"maj"},{"sym":"Bb","root":10,"suf":"","q":"maj"}],"loopName":"chorus","low":53,"high":77,"suggestT":0,"drills":["low","flip","legato"],"iv":[{"deg":7,"dir":1}],"style":["slow, noir half-time feel (~59)","low, sultry chest voice","sudden leaps into a high, thin head voice/falsetto","slow, wide vibrato"]},{"id":"lana12","n":12,"title":"Ride","album":"Paradise (EP)","year":2012,"instr":"Guitar","reel":"The final chorus (the big build)","flag":"","confidence":"high","tonic":0,"mode":"major","scale":[0,2,4,5,7,9,11],"doShift":0,"letShift":0,"keyName":"C major","bpm":94,"time":"4/4","practice":94,"loop":[{"sym":"F","root":5,"suf":"","q":"maj"},{"sym":"Am","root":9,"suf":"m","q":"min"},{"sym":"G","root":7,"suf":"","q":"maj"},{"sym":"Dm","root":2,"suf":"m","q":"min"}],"loopName":"chorus","low":53,"high":76,"suggestT":1,"drills":["low","legato","vib"],"iv":[{"deg":7,"dir":1}],"style":["big, cinematic power ballad","low chest-voice verses","soaring, fuller chorus that approaches a light belt","long sustained notes with slow vibrato"]},{"id":"lana13","n":13,"title":"National Anthem","album":"Born to Die","year":2012,"instr":"Piano","reel":"Chorus 1","flag":"","confidence":"high","tonic":3,"mode":"major","scale":[0,2,4,5,7,9,11],"doShift":0,"letShift":0,"keyName":"Eb major","bpm":85,"time":"4/4","practice":85,"loop":[{"sym":"Ab","root":8,"suf":"","q":"maj"},{"sym":"Cm","root":0,"suf":"m","q":"min"},{"sym":"Bb","root":10,"suf":"","q":"maj"}],"loopName":"chorus","low":55,"high":70,"suggestT":0,"drills":["low","legato"],"iv":[],"style":["half-spoken, rap-like rhythmic verses","sultry, low chest tone","smoother sung chorus","narrow range suited to rhythm/diction drills"]},{"id":"lana14","n":14,"title":"A&W","album":"Did You Know That There's a Tunnel Under Ocean Blvd","year":2023,"instr":"Guitar","reel":"First half only: the acoustic opening section","flag":"Approximate: sources disagree on key and chords. Check by ear against the recording.","confidence":"low","tonic":10,"mode":"major","scale":[0,2,4,5,7,9,11],"doShift":0,"letShift":0,"keyName":"Bb major","bpm":156,"time":"4/4","practice":78,"loop":[{"sym":"Bb","root":10,"suf":"","q":"maj"},{"sym":"Ebm/Gb","root":3,"suf":"m","q":"min"}],"loopName":"verse","low":52,"high":81,"suggestT":0,"drills":["low","flip","legato"],"iv":[],"style":["long first half as a sparse folk ballad in low, confessional chest voice","conversational, speech-like phrasing","second half as a repetitive, chant-like hook over trap beats","occasional high head-voice flights near the top of the range"]},{"id":"lana15","n":15,"title":"Norman F. Rockwell","album":"Norman F. Rockwell!","year":2019,"instr":"Piano","reel":"Verse 1 into chorus 1","flag":"Published in F major, but the song centres on C.","confidence":"high","tonic":0,"mode":"mixolydian","scale":[0,2,4,5,7,9,10],"doShift":5,"letShift":4,"keyName":"C mixolydian","bpm":78,"time":"4/4","practice":78,"loop":[{"sym":"C","root":0,"suf":"","q":"maj"},{"sym":"Bb","root":10,"suf":"","q":"maj"},{"sym":"Am","root":9,"suf":"m","q":"min"}],"loopName":"chorus","low":52,"high":76,"suggestT":1,"drills":["low","flip","vib"],"iv":[{"deg":7,"dir":1}],"style":["piano ballad with rubato-like phrasing","soft, low chest voice","light, breathy head voice in upper phrases","gentle vibrato; intimate, unforced delivery"]},{"id":"lana16","n":16,"title":"Mariners Apartment Complex","album":"Norman F. Rockwell!","year":2018,"instr":"Guitar","reel":"Chorus 1 (the warm low register)","flag":"","confidence":"high","tonic":4,"mode":"mixolydian","scale":[0,2,4,5,7,9,10],"doShift":5,"letShift":4,"keyName":"E mixolydian","bpm":76,"time":"4/4","practice":76,"loop":[{"sym":"E","root":4,"suf":"","q":"maj"},{"sym":"Bm","root":11,"suf":"m","q":"min"},{"sym":"A","root":9,"suf":"","q":"maj"}],"loopName":"verse","low":52,"high":68,"suggestT":3,"drills":["low","vib","legato"],"iv":[],"style":["low, warm chest voice for almost the whole song","relaxed, folk-rock phrasing","slow vibrato, little high register","layered doubled vocals"]},{"id":"lana17","n":17,"title":"hope is a dangerous thing for a woman like me to have - but I have it","album":"Norman F. Rockwell!","year":2019,"instr":"Piano","reel":"The opening verse (piano and voice)","flag":"Sources disagree (G or D major).","confidence":"medium","tonic":7,"mode":"major","scale":[0,2,4,5,7,9,11],"doShift":0,"letShift":0,"keyName":"G major","bpm":56,"time":"6/8","practice":72,"loop":[{"sym":"C","root":0,"suf":"","q":"maj"},{"sym":"D","root":2,"suf":"","q":"maj"},{"sym":"Em","root":4,"suf":"m","q":"min"}],"loopName":"chorus","low":50,"high":72,"suggestT":5,"drills":["low","flip","vib"],"iv":[{"deg":3,"dir":1}],"style":["solo piano ballad, very intimate","low, breathy chest voice","soft head voice on upper notes","free, speech-like rubato"]},{"id":"lana18","n":18,"title":"Chemtrails Over the Country Club","album":"Chemtrails Over the Country Club","year":2021,"instr":"Piano","reel":"Chorus 1","flag":"","confidence":"high","tonic":4,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"E minor","bpm":67,"time":"6/8","practice":72,"loop":[{"sym":"C","root":0,"suf":"","q":"maj"},{"sym":"D","root":2,"suf":"","q":"maj"},{"sym":"Em","root":4,"suf":"m","q":"min"}],"loopName":"chorus","low":52,"high":72,"suggestT":3,"drills":["low","flip","legato"],"iv":[],"style":["gently swaying 6/8 lilt","warm mid-register chest voice","soft head-voice lifts","dreamy, laid-back phrasing"]},{"id":"lana19","n":19,"title":"Diet Mountain Dew","album":"Born to Die","year":2012,"instr":"Guitar","reel":"Pre-chorus into chorus 1","flag":"","confidence":"high","tonic":10,"mode":"minor","scale":[0,2,3,5,7,8,10],"doShift":3,"letShift":5,"keyName":"Bb minor","bpm":88,"time":"4/4","practice":88,"loop":[{"sym":"Bbm","root":10,"suf":"m","q":"min"},{"sym":"Ab","root":8,"suf":"","q":"maj"},{"sym":"Gb","root":6,"suf":"","q":"maj"}],"loopName":"chorus","low":56,"high":72,"suggestT":0,"drills":["low","fall","legato"],"iv":[],"style":["sassy, rhythmic hip-hop-pop delivery","bright chest voice","playful scoops and slides","punchier, higher-energy chorus"]},{"id":"lana20","n":20,"title":"Ultraviolence","album":"Ultraviolence","year":2014,"instr":"Guitar","reel":"Chorus 1","flag":"Tempo differs between sources; the warm-up uses a comfortable pace.","confidence":"medium","tonic":2,"mode":"dorian","scale":[0,2,3,5,7,9,10],"doShift":-2,"letShift":1,"keyName":"D dorian","bpm":110,"time":"4/4","practice":72,"loop":[{"sym":"F","root":5,"suf":"","q":"maj"},{"sym":"Am/C","root":9,"suf":"m","q":"min"},{"sym":"G","root":7,"suf":"","q":"maj"},{"sym":"Dm","root":2,"suf":"m","q":"min"}],"loopName":"chorus","low":53,"high":69,"suggestT":2,"drills":["low","flip","fall"],"iv":[{"deg":5,"dir":1}],"style":["languid, woozy psychedelic-rock delivery","low chest voice with breathy tone","floaty, reverb-heavy chorus","slow vibrato and slides"]}];
+const W = { song:null, t:0, steps:[], i:-1, on:false, scores:[], phase:'' };
+const SAFE_LO = 53, SAFE_HI = 81;                 // never ask for notes outside F3-A5
+const TRIAD = {maj:[0,4,7], min:[0,3,7], dim:[0,3,6], aug:[0,4,8], sus4:[0,5,7], sus2:[0,2,7]};
+const wLog = id => { DB.warm = DB.warm || {}; return DB.warm[id] = DB.warm[id] || {lvl:1, tempo:1, last:null, best:0, log:[]}; };
+function wKey(s, t) {                              // key signature + tonic spelling after transposing by t semitones
+  const doPc = ((s.tonic + s.doShift + t) % 12 + 12) % 12, f = MAJ_FIFTHS[doPc], key = tonicFromFifths(f);
+  return {f, key, tonicPc:((s.tonic + t) % 12 + 12) % 12, tonicL:(key.L + s.letShift) % 7};
+}
+const wName = (pc, f) => (f < 0 ? FLATN : SHARPN)[((pc % 12) + 12) % 12];
+function wChordName(c, t, f) { const x = c.suf; const tail = c.q === 'min' ? 'm' + (/7/.test(x) ? '7' : '') : /^maj7/.test(x) ? 'maj7' : /sus4/.test(x) ? 'sus4' : /sus2/.test(x) ? 'sus2' : /dim/.test(x) ? 'dim' : /aug|\+/.test(x) ? 'aug' : /7/.test(x) ? '7' : ''; return wName(c.root + t, f) + tail; }
+function wCtx() {
+  const s = W.song, t = W.t, k = wKey(s, t), lo = Math.max(SAFE_LO, s.low + t), hi = Math.min(SAFE_HI, s.high + t);
+  let tonic = 48 + k.tonicPc; while (tonic < lo) tonic += 12; if (tonic + 12 > hi + 2 && tonic - 12 >= lo - 2) tonic -= 12;
+  const deg = (d, sc) => { const n = degNote(tonic, k.tonicL, k.tonicPc, sc || s.scale, d); return n; };
+  return {s, t, k, lo, hi, tonic, deg};
+}
+const wSeq = (arr) => { let t = 0; return arr.map(([n, d]) => { const x = Object.assign({t, d}, n); t += d; return x; }); };
+function chordTones(c, t, near) { const r = c.root + t; let root = 48 + (((r % 12) + 12) % 12); while (root < near - 5) root += 12; while (root > near + 6) root -= 12; return TRIAD[c.q].map(x => root + x); }
+function wSpell(m, f) { const sp = spellFromPc(((m % 12) + 12) % 12, f); return {m, L:sp.L, a:sp.a}; }
+
+/* the routine: each step = what to sing (notes in beats), chords underneath, and a one-line why */
+function buildSteps() {
+  const C = wCtx(), s = C.s, lv = wLog(s.id).lvl, steps = [], bar = +s.time.split('/')[0] * 4 / +s.time.split('/')[1];
+  const loop = s.loop.map(c => ({c, tones:chordTones(c, C.t, C.tonic)}));
+  steps.push({name:'1 \u{B7} Find home', why:'The piano plays the song\u{2019}s chord loop. Then hum the home note (' + (s.mode === 'minor' ? 'la' : s.mode === 'dorian' ? 're' : s.mode === 'mixolydian' ? 'sol' : 'do') + ') and hold it steady.',
+    pre:loop.map(x => x.tones), notes:wSeq([[C.deg(0), 4]]), pad:[{t:0, d:4, m:chordTones({root:s.tonic, q:s.mode === 'minor' || s.mode === 'dorian' ? 'min' : 'maj'}, C.t, C.tonic)}], listen:false});
+  const up = [0,1,2,3,4,5,6,7].map((d, i) => [C.deg(d), i === 7 ? 1.5 : .5]), down = [6,5,4,3,2,1,0].map((d, i) => [C.deg(d), i === 6 ? 2 : .5]);
+  steps.push({name:'2 \u{B7} The song\u{2019}s scale', why:`Up and down the ${s.keyName.split(' ').slice(1).join(' ')} scale this song is built on, in solf\u{E8}ge. Say each syllable clearly.`, notes:wSeq(up.concat(down)), known:true});
+  const arp = []; loop.forEach((x, j) => { const [a, b, c] = x.tones; [a, b, c, b].forEach(m => arp.push([wSpell(m, C.k.f), .5])); });
+  arp.push([wSpell(loop[0].tones[0], C.k.f), 2]);
+  steps.push({name:'3 \u{B7} Sing the chords', why:'Sing the notes of each chord in the loop (bottom-middle-top-middle). This is the harmony you\u{2019}ll sing over, so your ear knows where you are.',
+    notes:wSeq(arp), pad:loop.map((x, j) => ({t:j * 2, d:2, m:x.tones.map(v => v - 12)})).concat([{t:loop.length * 2, d:2, m:loop[0].tones.map(v => v - 12)}])});
+  // range stretch: from the song's lowest note up through the home chord to its highest, then home
+  const triPcs = [0, 2, 4].map(d => ((C.deg(d).m % 12) + 12) % 12), climb = [];
+  for (let m = C.lo; m <= C.hi; m++) if (triPcs.includes(((m % 12) + 12) % 12)) climb.push(m);
+  if (!climb.length || climb[0] !== C.lo) climb.unshift(C.lo);
+  const topSnap = s.scale.map(x => (x + C.k.tonicPc) % 12).includes(C.hi % 12) ? C.hi : C.hi - 1; if (climb[climb.length - 1] < topSnap) climb.push(topSnap);
+  const st = climb.map((m, i) => [wSpell(m, C.k.f), i === climb.length - 1 ? 2 : 1]); const back = climb.slice(0, -1).reverse().filter((m, i, a) => i % 2 === 0 || i === a.length - 1).map((m, i, a) => [wSpell(m, C.k.f), i === a.length - 1 ? 2 : 1]);
+  steps.push({name:'4 \u{B7} Range stretch', why:`From the song\u{2019}s lowest note (${noteName(C.lo)}) up to its highest (${noteName(topSnap)}) and back. Light and easy: if anything feels tight, sing it softer or skip.`, notes:wSeq(st.concat(back)), care:true, known:true});
+  // style drills
+  const D = {
+    low:{n:'Low & dark (Lana\u{2019}s chest voice)', w:'Low and relaxed, like speaking softly, with a little air in the tone. Keep the voice box low and loose. Never push.', seq:() => { const b = C.tonic - 12 >= C.lo - 1 ? -7 : 0; return [[4, 2], [3, 2], [2, 2], [1, 2], [0, 3]].map(([d, l]) => [C.deg(d + b), l]); }},
+    flip:{n:'The float (flip to head voice)', w:'Chest voice on the low notes, then flip to a light, airy head voice on the top note. Let it break: the flip is the style.', seq:() => [[C.deg(0), 1], [C.deg(4), 1], [C.deg(7), 3], [C.deg(4), 1], [C.deg(0), 2]]},
+    fall:{n:'The Lana fall', w:'Sing the first note full, then let the voice fall to the last note like a sigh. Smooth, lazy, relaxed.', seq:() => [[C.deg(4), 2], [C.deg(2), 1], [C.deg(0), 3]]},
+    legato:{n:'One long line', w:'All on one breath, smooth as a slide, with no bumps between the notes. Breathe low before you start.', seq:() => [0,1,2,3,4,3,2,1,0].map((d, i) => [C.deg(d), i === 8 ? 2 : 1])},
+    vib:{n:'Slow vibrato bloom', w:'Start each long note straight, then let a slow, relaxed vibrato bloom at the end. Don\u{2019}t force the wobble.', seq:() => [[C.deg(4), 4], [C.deg(2), 2], [C.deg(0), 4]]},
+    build:{n:'The build', w:'Start soft and grow to a strong but easy peak on the 4th note, then ease off. Strong, never shouting.', seq:() => [[C.deg(0), 1], [C.deg(2), 1], [C.deg(4), 1], [C.deg(5), 3], [C.deg(4), 2]]}
+  };
+  const picks = s.drills.slice(0, lv >= 2 ? 3 : 2);
+  picks.forEach((k, j) => { const d = D[k]; if (!d) return; steps.push({name:`${5 + j} \u{B7} ${d.n}`, why:d.w, notes:wSeq(d.seq().filter(x => x[0].m >= C.lo - 2 && x[0].m <= C.hi + 2))}); });
+  if (s.iv.length) { const v = s.iv[0], a = v.dir > 0 ? 0 : v.deg, b = v.dir > 0 ? v.deg : 0, nm = ['', 'step', '3rd', '4th', '5th', '6th', '7th', 'octave'][v.deg];
+    steps.push({name:`${5 + picks.length} \u{B7} The song\u{2019}s signature jump`, why:`This song leans on the ${nm} ${v.dir > 0 ? 'up' : 'down'}. Hear it, then land it cleanly, twice.`, notes:wSeq([[C.deg(a), 1], [C.deg(b), 2], [C.deg(a), 1], [C.deg(b), 3]])}); }
+  steps.forEach(x => { x.notes = x.notes.filter(n => n.m != null); });
+  return steps;
+}
+
+/* screens */
+function wTodayPick() {
+  const day = dk(new Date()); let h = 0; for (const c of day) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const ranked = WARM.map(s => ({s, last:wLog(s.id).last || ''})).sort((a, b) => a.last.localeCompare(b.last) || ((h + a.s.n * 7) % 20) - ((h + b.s.n * 7) % 20));
+  return ranked[0].s;
+}
+function wHome() {
+  const p = wTodayPick(), L = wLog(p.id);
+  $('wmToday').innerHTML = `<div class="wmPick"><small>\u{1F3B2} Today\u{2019}s pick</small><b>${esc(p.title)}</b><span>${(k => wName(k.tonicPc, k.f))(wKey(p, L.t != null ? L.t : p.suggestT))} ${esc(p.keyName.split(' ').slice(1).join(' '))} \u{B7} best on ${esc(p.instr.toLowerCase())} \u{B7} reel cut: ${esc(p.reel.toLowerCase())}</span><button class="go" data-id="${p.id}">\u{25B6} Start today\u{2019}s warm-up</button></div>`;
+  $('wmGrid').innerHTML = WARM.map(s => { const g = wLog(s.id); return `<button class="wmCard${s.id === p.id ? ' today' : ''}" data-id="${s.id}"><b>${esc(s.title)}</b><small>${esc(s.keyName)} \u{B7} ${s.instr.startsWith('Piano') ? '\u{1F3B9}' : s.instr.startsWith('Guitar') ? '\u{1F3B8}' : '\u{1F3B9}\u{1F3B8}'}${g.last ? ' \u{B7} done ' + g.last.slice(5) + (g.best ? ' \u{B7} best ' + g.best : '') : ''}</small></button>`; }).join('');
+}
+function wOpen(id) {
+  stopAll(); W.on = false; const s = WARM.find(x => x.id === id); if (!s) return; W.song = s;
+  const g = wLog(id); W.t = g.t != null ? g.t : s.suggestT;
+  $('wmSong').hidden = false; $('wmTitle').textContent = s.title;
+  $('wmInfo').innerHTML = `${esc(s.album)}${s.year ? ' (' + s.year + ')' : ''} \u{B7} ${s.time} \u{B7} best on ${esc(s.instr.toLowerCase())}<br><b>Reel cut:</b> ${esc(s.reel)}${s.flag ? `<br><span class="wmFlag">\u{26A0} ${esc(s.flag)}</span>` : ''}`;
+  $('wmKey').innerHTML = Array.from({length:13}, (_, i) => i - 5).map(v => { const k = wKey(s, v); return `<option value="${v}">${wName(k.tonicPc, k.f)} ${s.keyName.split(' ').slice(1).join(' ')}${v === 0 ? ' (Lana\u{2019}s key)' : ''}${v === s.suggestT && v !== 0 ? ' (suggested for your voice)' : ''}</option>`; }).join('');
+  $('wmKey').value = String(W.t);
+  wPrep(); $('wmSong').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function wPrep() {
+  const s = W.song, C = wCtx(); W.steps = buildSteps(); W.i = -1; W.scores = [];
+  S.fifthsView = C.k.f;
+  $('wmSteps').innerHTML = W.steps.map((x, i) => `<li data-i="${i}"><span>${esc(x.name)}</span><em></em></li>`).join('');
+  $('wmStepName').textContent = 'Ready when you are'; $('wmStepTip').textContent = `About ${Math.round(W.steps.reduce((a, x) => a + x.notes.reduce((b, n) => Math.max(b, n.t + n.d), 0) * 2 + 6, 0) * 60 / wBpm() / 60 + 0.5)} minutes. Headphones help. Each step: listen, then it\u{2019}s your turn and it grades you.`;
+  $('wmStatus').textContent = ''; $('wmSummary').hidden = true; $('wmChips').innerHTML = ''; drawRoll($('wmRoll'), [], C.k.key, -1);
+  const f = C.k.f, chords = s.loop.map(c => wChordName(c, C.t, f));
+  const cap = wCapo(s.loop, C.t);
+  $('wmPlayAlong').innerHTML = `<b>Play along</b> \u{1F3B9} ${chords.join(' \u{2013} ')}` + (cap ? ` \u{B7} \u{1F3B8} ${cap.capo ? 'capo ' + cap.capo : 'no capo'}: ${cap.names.join(' \u{2013} ')}` : '');
+  $('wmGo').textContent = '\u{25B6} Start the routine';
+}
+function wCapo(loop, t) {                         // easiest guitar shapes: try capo 0-7
+  const EASY = ['C', 'D', 'E', 'G', 'A', 'Am', 'Em', 'Dm', 'F'];
+  let best = null;
+  for (let cp = 0; cp <= 7; cp++) {
+    const names = loop.map(c => SHARPN[(((c.root + t - cp) % 12) + 12) % 12].replace('\u{266F}', '#') + (c.q === 'min' ? 'm' : ''));
+    const hard = names.filter(n => !EASY.includes(n)).length;
+    if (!best || hard < best.hard) best = {capo:cp, names, hard};
+  }
+  return best && best.hard === 0 ? best : null;
+}
+const wBpm = () => W.song.practice * wLog(W.song.id).tempo * +$('wmSpd').value;
+function wPad(pad, start, spb) { if (!pad) return; pad.forEach(p => { const beats = Math.max(1, Math.round(p.d)); for (let b = 0; b < beats; b += 2) p.m.forEach(m => piano(m, start + (p.t + b) * spb, spb * 2 * .95, .16, runGain)); }); }
+function wStep(i) {
+  if (!W.on) return; W.i = i;
+  document.querySelectorAll('#wmSteps li').forEach((li, j) => li.classList.toggle('cur', j === i));
+  if (i >= W.steps.length) return wDone();
+  const st = W.steps[i], C = wCtx(), spb = 60 / wBpm();
+  $('wmStepName').textContent = st.name; $('wmStepTip').textContent = st.why;
+  $('wmChips').innerHTML = st.notes.map(n => { const sy = sylOf(n, C.k.key); return `<div class="chip${isChrom(sy) ? ' chrom' : ''}"><b>${sy}</b><span>${noteName(n.m, n.L, n.a, 0)}</span></div>`; }).join('');
+  drawRoll($('wmRoll'), st.notes, C.k.key, -1);
+  const base = {bpm:wBpm(), tr:0, key:C.k.key, canvas:$('wmRoll'), chips:'#wmChips', statusEl:$('wmStatus'), status:m => $('wmStatus').textContent = m};
+  const test = () => { const o = Object.assign({}, base, {mode:'test', onPass:(kind, at) => { if (kind === 'test') wPad(st.pad, at, 60 / base.bpm); },
+    onDone:(g, r) => { if (!W.on) return; const rh = rhythmScore(r), sc = g && g.heard ? Math.round(.65 * g.score + .35 * rh) : 0; W.scores[i] = sc;
+      const li = document.querySelector(`#wmSteps li[data-i="${i}"] em`); if (li) { li.textContent = g && g.heard ? sc : '\u{2013}'; li.className = sc >= 85 ? 'A' : sc >= 70 ? 'B' : sc >= 55 ? 'C' : 'D'; }
+      let msg = !g || !g.heard ? 'Nothing was heard: sing a little louder or move closer.' : sc >= 85 ? 'Great!' : sc >= 70 ? 'Good.' : 'Keep going: it gets easier with the repeats.';
+      if (st.care && g && g.res && g.res[g.res.length - 1] !== 'ok' && g.heard) msg += ' Top note not quite there? That\u{2019}s fine: stay light, it comes with time.';
+      $('wmStatus').textContent = msg; setTimeout(() => wStep(i + 1), 1400); }});
+    run(st.notes, o).then(() => { if (o.noMic && W.on) { $('wmStatus').textContent = 'No microphone, so this step is sing-along only (no grade). Allow the microphone to get graded.';
+      run(st.notes, Object.assign({}, base, {mode:'echo', onDone:() => { if (W.on) setTimeout(() => wStep(i + 1), 800); }})); } }); };
+  const listen = () => run(st.notes, Object.assign({}, base, {mode:'play', onPass:(kind, at) => { if (kind === 'play') wPad(st.pad, at, 60 / base.bpm); },
+    onDone:() => { if (!W.on) return; $('wmStatus').innerHTML = '<span class="turn">Your turn</span>'; setTimeout(test, 700); }}));
+  if (st.pre) {                                   // chord loop first (Find home)
+    ensureAudio(); const t0 = ac.currentTime + .1, len = spb * 2 * (+W.song.time.split('/')[0] >= 3 ? 1.5 : 1);
+    st.pre.forEach((ch, j) => ch.forEach(m => piano(m - 12, t0 + j * len, len * .95, .3, master)));
+    $('wmStatus').textContent = 'Listen: the song\u{2019}s chord loop\u{2026}';
+    setTimeout(() => { if (W.on) { $('wmStatus').innerHTML = '<span class="turn">Your turn: hum the home note</span>'; test(); } }, (st.pre.length * len + .4) * 1000);
+  } else if (st.known && wLog(W.song.id).log.length) { $('wmStatus').innerHTML = '<span class="turn">Your turn</span> (you know this one: starting note, then go)'; setTimeout(test, 500); }
+  else listen();
+}
+function wDone() {
+  W.on = false; const s = W.song, g = wLog(s.id), got = W.scores.filter(x => x != null), avg = got.length ? Math.round(got.reduce((a, b) => a + b, 0) / got.length) : 0;
+  g.last = dk(new Date()); if (got.length) g.best = Math.max(g.best || 0, avg); g.log.push({d:g.last, score:got.length ? avg : null, t:W.t}); g.log = g.log.slice(-60);
+  let note = '';
+  if (!got.length) note = 'Sing-along done (no grades this time: allow the microphone to get scored).';
+  else if (avg >= 85) { g.tempo = Math.min(1.15, +(g.tempo * 1.05).toFixed(2)); if (g.lvl < 2) g.lvl = 2; note = 'Excellent! Next time this routine goes a little faster and adds an extra style drill.'; }
+  else if (avg < 60 && got.length) { g.tempo = Math.max(.8, +(g.tempo * .9).toFixed(2)); note = 'Next time it goes a little slower, so each step can settle.'; }
+  else note = 'Solid. Same pace next time.';
+  markDay(); saveDB();
+  $('wmSummary').hidden = false;
+  $('wmSummary').innerHTML = `<div class="grade">${!got.length ? '\u{2713}' : avg >= 90 ? 'A' : avg >= 80 ? 'B' : avg >= 70 ? 'C' : avg >= 60 ? 'D' : 'F'}</div><div><b>Warm-up done${got.length ? ': ' + avg + '/100' : ''}</b><p>${note}</p><p>Now you\u{2019}re ready to film: <b>${esc(s.reel.toLowerCase())}</b>.</p><button class="go" id="wmReelGo">\u{1F3AC} Reel mode</button></div>`;
+  $('wmReelGo').onclick = wReel; $('wmGo').textContent = '\u{27F2} Do it again'; $('wmStepName').textContent = 'All done'; $('wmStepTip').textContent = '';
+  wHome();
+}
+/* reel mode: big clean screen, countdown, 60-second timer */
+let wWake = null;
+async function wReel() {
+  const s = W.song, C = wCtx();
+  $('wrTitle').textContent = s.title; $('wrCut').textContent = s.reel; $('wrKey').textContent = `Key: ${wName(C.k.tonicPc, C.k.f)} ${s.keyName.split(' ').slice(1).join(' ')}`;
+  $('wrNum').textContent = ''; $('wrRing').style.strokeDashoffset = 0; $('wmReel').hidden = false;
+  try { wWake = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function wReelStart() {
+  if (W.reelOn) return; W.reelOn = true; $('wrStart').disabled = true;
+  const ring = $('wrRing'), C2 = 2 * Math.PI * 90; let n = 3; $('wrNum').textContent = n;
+  const cd = setInterval(() => { n--; if (n > 0) { $('wrNum').textContent = n; return; } clearInterval(cd);
+    const t0 = performance.now(); $('wrNum').textContent = '60';
+    W.reelTimer = setInterval(() => { const el = (performance.now() - t0) / 1000, left = Math.max(0, 60 - el);
+      $('wrNum').textContent = Math.ceil(left); ring.style.strokeDashoffset = (C2 * el / 60).toFixed(1);
+      if (left <= 0) { clearInterval(W.reelTimer); $('wrNum').textContent = 'Cut!'; W.reelOn = false; $('wrStart').disabled = false; } }, 100); }, 1000);
+}
+function wReelClose() { clearInterval(W.reelTimer); W.reelOn = false; $('wrStart').disabled = false; $('wmReel').hidden = true; try { wWake && wWake.release(); } catch (e) {} wWake = null; }
+(() => {
+  $('wmToday').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { ensureAudio(); if (ac.state !== 'running') ac.resume(); wOpen(b.dataset.id); setTimeout(() => $('wmGo').click(), 400); } });
+  $('wmGrid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) wOpen(b.dataset.id); });
+  $('wmKey').onchange = e => { stopAll(); W.on = false; W.t = +e.target.value; wLog(W.song.id).t = W.t; saveDB(); wPrep(); };
+  $('wmSpd').onchange = () => { stopAll(); W.on = false; wPrep(); };
+  $('wmGo').onclick = () => { if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
+  $('wmSkip').onclick = () => { if (!W.on) return; stopAll(); wStep(W.i + 1); };
+  $('wmAgain').onclick = () => { if (!W.on || W.i < 0) return; stopAll(); wStep(W.i); };
+  $('wmReelBtn').onclick = () => { if (W.song) wReel(); };
+  $('wrStart').onclick = wReelStart; $('wrClose').onclick = wReelClose;
+  $('wrPitch').onclick = () => { const C = wCtx(); ensureAudio(); const t0 = ac.currentTime + .05; chordTones({root:W.song.tonic, q:W.song.mode === 'minor' || W.song.mode === 'dorian' ? 'min' : 'maj'}, C.t, C.tonic).forEach(m => piano(m - 12, t0, 1.6, .3, master)); piano(C.tonic, t0 + 1.7, 1.4, .5, master); };
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('wmReel').hidden) wReelClose(); });
+})();
+
 /* ---------- tabs ---------- */
-const VIEWS = {songs:'songsView', sight:'sightView', adv:'advView', int:'intView', basics:'basicsView', prog:'progView'};
+const VIEWS = {songs:'songsView', sight:'sightView', warm:'warmView', adv:'advView', int:'intView', basics:'basicsView', prog:'progView'};
 function setTab(k) {
   stopAll();
   Object.entries(VIEWS).forEach(([t, v]) => { $(v).hidden = t !== k; $('t-' + t).setAttribute('aria-selected', t === k); });
   if (k === 'sight' && !SS.notes.length) genMelody();
   if (k === 'int') buildIvGrid();
+  try { W.on = false; } catch (e) {}
+  if (k === 'warm') wHome();
   if (k === 'adv') { if (!ADV.ex) setAdvView(ADV.view); else renderScore(ADV.ex); }
   if (k === 'prog') buildReport();
 }
