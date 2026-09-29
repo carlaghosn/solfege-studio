@@ -1565,7 +1565,7 @@ function wCapo(loop, t) {                         // easiest guitar shapes: try 
 const wBpm = () => W.song.practice * wLog(W.song.id).tempo * +$('wmSpd').value;
 function wPad(pad, start, spb) { if (!pad) return; pad.forEach(p => { const beats = Math.max(1, Math.round(p.d)); for (let b = 0; b < beats; b += 2) p.m.forEach(m => piano(m, start + (p.t + b) * spb, spb * 2 * .95, .16, runGain)); }); }
 function wStep(i) {
-  if (!W.on) return; W.i = i;
+  if (!W.on) return; W.i = i; const tok = W.tok = (W.tok || 0) + 1, live = () => W.on && W.tok === tok;
   document.querySelectorAll('#wmSteps li').forEach((li, j) => li.classList.toggle('cur', j === i));
   if (i >= W.steps.length) return wDone();
   const st = W.steps[i], C = wCtx(), spb = 60 / wBpm();
@@ -1574,21 +1574,21 @@ function wStep(i) {
   drawRoll($('wmRoll'), st.notes, C.k.key, -1);
   const base = {bpm:wBpm(), tr:0, key:C.k.key, canvas:$('wmRoll'), chips:'#wmChips', statusEl:$('wmStatus'), status:m => $('wmStatus').textContent = m};
   const test = () => { const o = Object.assign({}, base, {mode:'test', onPass:(kind, at) => { if (kind === 'test') wPad(st.pad, at, 60 / base.bpm); },
-    onDone:(g, r) => { if (!W.on) return; const rh = rhythmScore(r), sc = g && g.heard ? Math.round(.65 * g.score + .35 * rh) : 0; W.scores[i] = sc;
+    onDone:(g, r) => { if (!live()) return; const rh = rhythmScore(r), sc = g && g.heard ? Math.round(.65 * g.score + .35 * rh) : 0; W.scores[i] = sc;
       const li = document.querySelector(`#wmSteps li[data-i="${i}"] em`); if (li) { li.textContent = g && g.heard ? sc : '\u{2013}'; li.className = sc >= 85 ? 'A' : sc >= 70 ? 'B' : sc >= 55 ? 'C' : 'D'; }
       let msg = !g || !g.heard ? 'Nothing was heard: sing a little louder or move closer.' : sc >= 85 ? 'Great!' : sc >= 70 ? 'Good.' : 'Keep going: it gets easier with the repeats.';
       if (st.care && g && g.res && g.res[g.res.length - 1] !== 'ok' && g.heard) msg += ' Top note not quite there? That\u{2019}s fine: stay light, it comes with time.';
-      $('wmStatus').textContent = msg; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = msg + ' Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => wStep(i + 1), 1400); }});
-    run(st.notes, o).then(() => { if (o.noMic && W.on) { $('wmStatus').textContent = 'No microphone, so this step is sing-along only (no grade). Allow the microphone to get graded.';
-      run(st.notes, Object.assign({}, base, {mode:'echo', onDone:() => { if (!W.on) return; $('wmStatus').textContent = 'Step done (sing-along).'; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = 'Step done (sing-along). Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => wStep(i + 1), 800); }})); } }); };
+      $('wmStatus').textContent = msg; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = msg + ' Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => { if (live()) wStep(i + 1); }, 1400); }});
+    run(st.notes, o).then(() => { if (o.noMic && live()) { $('wmStatus').textContent = 'No microphone, so this step is sing-along only (no grade). Allow the microphone to get graded.';
+      run(st.notes, Object.assign({}, base, {mode:'echo', onDone:() => { if (!live()) return; $('wmStatus').textContent = 'Step done (sing-along).'; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = 'Step done (sing-along). Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => { if (live()) wStep(i + 1); }, 800); }})); } }); };
   const listen = () => run(st.notes, Object.assign({}, base, {mode:'play', onPass:(kind, at) => { if (kind === 'play') wPad(st.pad, at, 60 / base.bpm); },
-    onDone:() => { if (!W.on) return; $('wmStatus').innerHTML = '<span class="turn">Your turn</span>'; setTimeout(test, 700); }}));
+    onDone:() => { if (!live()) return; $('wmStatus').innerHTML = '<span class="turn">Your turn</span>'; setTimeout(() => { if (live()) test(); }, 700); }}));
   if (st.pre) {                                   // chord loop first (Find home)
     ensureAudio(); const t0 = ac.currentTime + .1, len = spb * 2 * (+W.song.time.split('/')[0] >= 3 ? 1.5 : 1);
     st.pre.forEach((ch, j) => ch.forEach(m => piano(m - 12, t0 + j * len, len * .95, .3, master)));
     $('wmStatus').textContent = 'Listen: the song\u{2019}s chord loop\u{2026}';
-    setTimeout(() => { if (W.on) { $('wmStatus').innerHTML = '<span class="turn">Your turn: hum the home note</span>'; test(); } }, (st.pre.length * len + .4) * 1000);
-  } else if (st.known && wLog(W.song.id).log.length) { $('wmStatus').innerHTML = '<span class="turn">Your turn</span> (you know this one: starting note, then go)'; setTimeout(test, 500); }
+    setTimeout(() => { if (live()) { $('wmStatus').innerHTML = '<span class="turn">Your turn: hum the home note</span>'; test(); } }, (st.pre.length * len + .4) * 1000);
+  } else if (st.known && wLog(W.song.id).log.length) { $('wmStatus').innerHTML = '<span class="turn">Your turn</span> (you know this one: starting note, then go)'; setTimeout(() => { if (live()) test(); }, 500); }
   else listen();
 }
 function wDone() {
@@ -1628,8 +1628,8 @@ function wReelClose() { clearInterval(W.reelTimer); W.reelOn = false; $('wrStart
   $('wmGrid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { W.pickId = b.dataset.id; wHome(); wOpen(b.dataset.id); } });
   $('wmKey').onchange = e => { stopAll(); W.on = false; W.t = +e.target.value; wLog(W.song.id).t = W.t; saveDB(); wPrep(); };
   $('wmSpd').onchange = () => { stopAll(); W.on = false; wPrep(); };
-  $('wmGo').onclick = () => { W.only = false; if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
-  const jump = li => { if (!li || !W.song) return; stopAll(); W.on = true; W.only = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(+li.dataset.i); };
+  $('wmGo').onclick = () => { W.only = false; W.tok = (W.tok || 0) + 1; if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
+  const jump = li => { if (!li || !W.song) return; const cont = W.on && !W.only; W.tok = (W.tok || 0) + 1; stopAll(); W.on = true; W.only = !cont; $('wmGo').textContent = '\u{25A0} Stop'; wStep(+li.dataset.i); };
   $('wmSteps').addEventListener('click', e => jump(e.target.closest('li')));
   $('wmSteps').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(e.target.closest('li')); } });
   $('wmSkip').onclick = () => { if (!W.on) return; stopAll(); wStep(W.i + 1); };
