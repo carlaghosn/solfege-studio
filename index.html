@@ -147,6 +147,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .tablewrap{overflow-x:auto}
 .wmPick{background:linear-gradient(135deg,#1e2a4a,#3b2a5a);color:#fff;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .wmPick small{opacity:.8;font-weight:700;letter-spacing:.04em}.wmPick b{font:800 24px var(--display)}.wmPick span{opacity:.85;font-size:13.5px}.wmPick .go{align-self:flex-start;margin-top:6px}
+.wmChoose{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}.wmChoose select{flex:1;min-width:180px;border-radius:10px;padding:7px 10px;font-weight:700;border:0}
 .wmAll{margin-top:12px}.wmAll summary{cursor:pointer;font-weight:800}
 .wmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:8px}
 .wmCard{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:9px 11px;cursor:pointer;color:var(--ink)}
@@ -1524,8 +1525,10 @@ function wTodayPick() {
   return ranked[0].s;
 }
 function wHome() {
-  const p = wTodayPick(), L = wLog(p.id);
-  $('wmToday').innerHTML = `<div class="wmPick"><small>\u{1F3B2} Today\u{2019}s pick</small><b>${esc(p.title)}</b><span>${(k => wName(k.tonicPc, k.f))(wKey(p, L.t != null ? L.t : p.suggestT))} ${esc(p.keyName.split(' ').slice(1).join(' '))} \u{B7} best on ${esc(p.instr.toLowerCase())} \u{B7} reel cut: ${esc(p.reel.toLowerCase())}</span><button class="go" data-id="${p.id}">\u{25B6} Start today\u{2019}s warm-up</button></div>`;
+  const today = wTodayPick(), p = (W.pickId && WARM.find(x => x.id === W.pickId)) || today, L = wLog(p.id);
+  $('wmToday').innerHTML = `<div class="wmPick"><small>${p.id === today.id ? '\u{1F3B2} Today\u{2019}s pick' : '\u{1F3B5} Your pick'}</small><div class="wmChoose"><select id="wmPickSel" aria-label="Choose a song">${WARM.map(x => `<option value="${x.id}"${x.id === p.id ? ' selected' : ''}>${esc(x.title)}${x.id === today.id ? ' (today\u{2019}s pick)' : ''}</option>`).join('')}</select><button class="btn" id="wmShuffle" type="button">\u{1F3B2} Shuffle</button></div><b>${esc(p.title)}</b><span>${(k => wName(k.tonicPc, k.f))(wKey(p, L.t != null ? L.t : p.suggestT))} ${esc(p.keyName.split(' ').slice(1).join(' '))} \u{B7} best on ${esc(p.instr.toLowerCase())} \u{B7} reel cut: ${esc(p.reel.toLowerCase())}</span><button class="go" data-id="${p.id}">\u{25B6} Start the warm-up</button></div>`;
+  $('wmPickSel').onchange = e => { W.pickId = e.target.value; wHome(); };
+  $('wmShuffle').onclick = () => { const others = WARM.filter(x => x.id !== p.id); W.pickId = others[Math.floor(Math.random() * others.length)].id; wHome(); };
   $('wmGrid').innerHTML = WARM.map(s => { const g = wLog(s.id); return `<button class="wmCard${s.id === p.id ? ' today' : ''}" data-id="${s.id}"><b>${esc(s.title)}</b><small>${esc(s.keyName)} \u{B7} ${s.instr.startsWith('Piano') ? '\u{1F3B9}' : s.instr.startsWith('Guitar') ? '\u{1F3B8}' : '\u{1F3B9}\u{1F3B8}'}${g.last ? ' \u{B7} done ' + g.last.slice(5) + (g.best ? ' \u{B7} best ' + g.best : '') : ''}</small></button>`; }).join('');
 }
 function wOpen(id) {
@@ -1620,8 +1623,8 @@ function wReelStart() {
 }
 function wReelClose() { clearInterval(W.reelTimer); W.reelOn = false; $('wrStart').disabled = false; $('wmReel').hidden = true; try { wWake && wWake.release(); } catch (e) {} wWake = null; }
 (() => {
-  $('wmToday').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { ensureAudio(); if (ac.state !== 'running') ac.resume(); wOpen(b.dataset.id); setTimeout(() => $('wmGo').click(), 400); } });
-  $('wmGrid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) wOpen(b.dataset.id); });
+  $('wmToday').addEventListener('click', e => { const b = e.target.closest('button.go[data-id]'); if (b) { ensureAudio(); if (ac.state !== 'running') ac.resume(); wOpen(b.dataset.id); setTimeout(() => $('wmGo').click(), 400); } });
+  $('wmGrid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { W.pickId = b.dataset.id; wHome(); wOpen(b.dataset.id); } });
   $('wmKey').onchange = e => { stopAll(); W.on = false; W.t = +e.target.value; wLog(W.song.id).t = W.t; saveDB(); wPrep(); };
   $('wmSpd').onchange = () => { stopAll(); W.on = false; wPrep(); };
   $('wmGo').onclick = () => { if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
