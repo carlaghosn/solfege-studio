@@ -154,7 +154,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .wmCard b{display:block;font-size:14px}.wmCard small{color:var(--muted);font-size:11.5px}.wmCard.today{outline:2px solid var(--accent)}
 .wmFlag{color:#b26b00}
 .wmSteps{margin:10px 0 0;padding-left:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
-.wmSteps li{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;background:var(--surface-2)}
+.wmSteps li{cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;background:var(--surface-2)}
+.wmSteps li:hover{border-color:var(--accent)}
 .wmSteps li.cur{background:var(--accent);color:#fff;border-color:var(--accent)}
 .wmSteps em{font-style:normal;font-weight:800}.wmSteps em.A{color:#0c7a3f}.wmSteps em.B{color:#5c7d12}.wmSteps em.C{color:#9a6b00}.wmSteps em.D{color:#b3261e}
 .wmSteps li.cur em{color:#fff}
@@ -1543,7 +1544,7 @@ function wOpen(id) {
 function wPrep() {
   const s = W.song, C = wCtx(); W.steps = buildSteps(); W.i = -1; W.scores = [];
   S.fifthsView = C.k.f;
-  $('wmSteps').innerHTML = W.steps.map((x, i) => `<li data-i="${i}"><span>${esc(x.name)}</span><em></em></li>`).join('');
+  $('wmSteps').innerHTML = W.steps.map((x, i) => `<li data-i="${i}" role="button" tabindex="0" title="Practice just this step"><span>${esc(x.name)}</span><em></em></li>`).join('');
   $('wmStepName').textContent = 'Ready when you are'; $('wmStepTip').textContent = `About ${Math.round(W.steps.reduce((a, x) => a + x.notes.reduce((b, n) => Math.max(b, n.t + n.d), 0) * 2 + 6, 0) * 60 / wBpm() / 60 + 0.5)} minutes. Headphones help. Each step: listen, then it\u{2019}s your turn and it grades you.`;
   $('wmStatus').textContent = ''; $('wmSummary').hidden = true; $('wmChips').innerHTML = ''; drawRoll($('wmRoll'), [], C.k.key, -1);
   const f = C.k.f, chords = s.loop.map(c => wChordName(c, C.t, f));
@@ -1577,9 +1578,9 @@ function wStep(i) {
       const li = document.querySelector(`#wmSteps li[data-i="${i}"] em`); if (li) { li.textContent = g && g.heard ? sc : '\u{2013}'; li.className = sc >= 85 ? 'A' : sc >= 70 ? 'B' : sc >= 55 ? 'C' : 'D'; }
       let msg = !g || !g.heard ? 'Nothing was heard: sing a little louder or move closer.' : sc >= 85 ? 'Great!' : sc >= 70 ? 'Good.' : 'Keep going: it gets easier with the repeats.';
       if (st.care && g && g.res && g.res[g.res.length - 1] !== 'ok' && g.heard) msg += ' Top note not quite there? That\u{2019}s fine: stay light, it comes with time.';
-      $('wmStatus').textContent = msg; setTimeout(() => wStep(i + 1), 1400); }});
+      $('wmStatus').textContent = msg; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = msg + ' Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => wStep(i + 1), 1400); }});
     run(st.notes, o).then(() => { if (o.noMic && W.on) { $('wmStatus').textContent = 'No microphone, so this step is sing-along only (no grade). Allow the microphone to get graded.';
-      run(st.notes, Object.assign({}, base, {mode:'echo', onDone:() => { if (W.on) setTimeout(() => wStep(i + 1), 800); }})); } }); };
+      run(st.notes, Object.assign({}, base, {mode:'echo', onDone:() => { if (!W.on) return; $('wmStatus').textContent = 'Step done (sing-along).'; if (W.only) { W.on = false; $('wmGo').textContent = '\u{25B6} Start the routine'; $('wmStatus').textContent = 'Step done (sing-along). Tap the step again to repeat it, or another step to practice.'; return; } setTimeout(() => wStep(i + 1), 800); }})); } }); };
   const listen = () => run(st.notes, Object.assign({}, base, {mode:'play', onPass:(kind, at) => { if (kind === 'play') wPad(st.pad, at, 60 / base.bpm); },
     onDone:() => { if (!W.on) return; $('wmStatus').innerHTML = '<span class="turn">Your turn</span>'; setTimeout(test, 700); }}));
   if (st.pre) {                                   // chord loop first (Find home)
@@ -1627,9 +1628,12 @@ function wReelClose() { clearInterval(W.reelTimer); W.reelOn = false; $('wrStart
   $('wmGrid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { W.pickId = b.dataset.id; wHome(); wOpen(b.dataset.id); } });
   $('wmKey').onchange = e => { stopAll(); W.on = false; W.t = +e.target.value; wLog(W.song.id).t = W.t; saveDB(); wPrep(); };
   $('wmSpd').onchange = () => { stopAll(); W.on = false; wPrep(); };
-  $('wmGo').onclick = () => { if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
+  $('wmGo').onclick = () => { W.only = false; if (W.on) { W.on = false; stopAll(); $('wmGo').textContent = '\u{25B6} Start the routine'; return; } wPrep(); W.on = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(0); };
+  const jump = li => { if (!li || !W.song) return; stopAll(); W.on = true; W.only = true; $('wmGo').textContent = '\u{25A0} Stop'; wStep(+li.dataset.i); };
+  $('wmSteps').addEventListener('click', e => jump(e.target.closest('li')));
+  $('wmSteps').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(e.target.closest('li')); } });
   $('wmSkip').onclick = () => { if (!W.on) return; stopAll(); wStep(W.i + 1); };
-  $('wmAgain').onclick = () => { if (!W.on || W.i < 0) return; stopAll(); wStep(W.i); };
+  $('wmAgain').onclick = () => { if (W.i < 0 || !W.song) return; stopAll(); if (!W.on) { W.on = true; W.only = true; $('wmGo').textContent = '\u{25A0} Stop'; } wStep(W.i); };
   $('wmReelBtn').onclick = () => { if (W.song) wReel(); };
   $('wrStart').onclick = wReelStart; $('wrClose').onclick = wReelClose;
   $('wrPitch').onclick = () => { const C = wCtx(); ensureAudio(); const t0 = ac.currentTime + .05; chordTones({root:W.song.tonic, q:W.song.mode === 'minor' || W.song.mode === 'dorian' ? 'min' : 'maj'}, C.t, C.tonic).forEach(m => piano(m - 12, t0, 1.6, .3, master)); piano(C.tonic, t0 + 1.7, 1.4, .5, master); };
